@@ -530,6 +530,12 @@
     return Number(game?.updatedAt || game?.createdAt || 0);
   }
 
+  function mergeSpectatorCards(existing, incoming) {
+    const prev = existing && typeof existing === "object" ? existing : {};
+    if (!incoming || typeof incoming !== "object") return prev;
+    return { ...prev, ...incoming };
+  }
+
   function mergeGameMaps(base, incoming) {
     const merged = { ...base };
     if (!incoming || typeof incoming !== "object") return merged;
@@ -541,7 +547,14 @@
         return;
       }
       if (!merged[gid] || gameTimestamp(game) >= gameTimestamp(merged[gid])) {
-        merged[gid] = game;
+        const prev = merged[gid] || {};
+        merged[gid] = {
+          ...prev,
+          ...game,
+          spectatorCards: mergeSpectatorCards(prev.spectatorCards, game.spectatorCards),
+          pendingWinner: "pendingWinner" in game ? game.pendingWinner : (prev.pendingWinner ?? null),
+          confirmedWinners: game.confirmedWinners ?? prev.confirmedWinners ?? [],
+        };
       }
     });
     return merged;
@@ -1140,7 +1153,7 @@
     const existing = games[currentGameId] || {};
     const finished = pool.length === 0 && called.length > 0;
     const nextLiveDraw = "liveDraw" in patch ? patch.liveDraw : (existing.liveDraw ?? null);
-    games[currentGameId] = normalizeGameState({
+    const gameState = normalizeGameState({
       ...existing,
       ...patch,
       id: currentGameId,
@@ -1157,11 +1170,16 @@
       digitalCardsEnabled: "digitalCardsEnabled" in patch
         ? !!patch.digitalCardsEnabled
         : !!existing.digitalCardsEnabled,
-      spectatorCards: patch.spectatorCards ?? existing.spectatorCards ?? {},
       pendingWinner: "pendingWinner" in patch ? patch.pendingWinner : (existing.pendingWinner ?? null),
       confirmedWinners: patch.confirmedWinners ?? existing.confirmedWinners ?? [],
       liveDraw: nextLiveDraw,
     });
+    if ("spectatorCards" in patch) {
+      gameState.spectatorCards = patch.spectatorCards;
+    } else {
+      delete gameState.spectatorCards;
+    }
+    games[currentGameId] = gameState;
     await saveAllGames(games);
     if (finished) clearSessionIfGame(currentGameId);
   }

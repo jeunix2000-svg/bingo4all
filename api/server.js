@@ -83,6 +83,12 @@ function countActiveGamesForIp(games, ip) {
   ).length;
 }
 
+function mergeSpectatorCards(existing, incoming) {
+  const prev = existing && typeof existing === 'object' ? existing : {};
+  if (!incoming || typeof incoming !== 'object') return prev;
+  return { ...prev, ...incoming };
+}
+
 function mergeGames(base, incoming, clientIp) {
   const preservedDemo = base[DEMO_GAME_ID];
   const out = { ...base };
@@ -115,7 +121,7 @@ function mergeGames(base, incoming, clientIp) {
         digitalCardsEnabled: 'digitalCardsEnabled' in game
           ? !!game.digitalCardsEnabled
           : !!existing.digitalCardsEnabled,
-        spectatorCards: game.spectatorCards ?? existing.spectatorCards ?? {},
+        spectatorCards: mergeSpectatorCards(existing.spectatorCards, game.spectatorCards),
         pendingWinner: 'pendingWinner' in game ? game.pendingWinner : (existing.pendingWinner ?? null),
         confirmedWinners: game.confirmedWinners ?? existing.confirmedWinners ?? [],
       };
