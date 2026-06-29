@@ -40,17 +40,20 @@
 
     .portal-back-btn { display: none; }
 
+    /* Desktop: QR sits in host panel flow (below controls), not fixed overlay */
     .host-qr-panel {
-      position: fixed;
-      left: 0.75rem;
-      bottom: 0.75rem;
-      z-index: 260;
-      padding: 0.65rem 0.7rem 0.55rem;
+      position: relative;
+      left: auto;
+      bottom: auto;
+      z-index: 1;
+      margin-top: 0.85rem;
+      padding: 0.55rem 0.65rem 0.5rem;
       background: rgba(15, 20, 25, 0.94);
       border: 1px solid rgba(255, 215, 0, 0.28);
       border-radius: 12px;
       box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
       text-align: center;
+      flex-shrink: 0;
     }
 
     .host-qr-panel[hidden] {
@@ -79,8 +82,8 @@
     .host-qr-code img,
     .host-qr-code canvas {
       display: block;
-      width: 216px;
-      height: 216px;
+      width: 140px;
+      height: 140px;
       border-radius: 8px;
     }
 
@@ -124,8 +127,11 @@
 
     @media (max-width: 700px) {
       .host-qr-panel {
+        position: fixed;
         left: 0.5rem;
         bottom: 0.5rem;
+        margin-top: 0;
+        z-index: 260;
         padding: 0.5rem;
       }
       .host-qr-code img,
@@ -187,6 +193,7 @@
       border-radius: 16px;
       padding: 1.5rem;
       min-height: 0;
+      overflow-y: auto;
     }
 
     .ball-display {
@@ -1061,6 +1068,11 @@
       </div>
       <p class="hint host-controls" data-i18n="bingo.draw_hint">Space キーでも抽選</p>
       <button class="btn-link host-controls" id="toggle-card-btn" type="button" data-i18n="bingo.card_btn">デジタルカード</button>
+      <div id="host-qr-panel" class="host-qr-panel host-controls" hidden>
+        <div id="host-qr-code" class="host-qr-code" role="button" tabindex="0" aria-label="観戦用QRコード。長押しで保存"></div>
+        <p class="host-qr-label" data-i18n="bingo.qr_label">スキャンして観戦</p>
+        <p class="host-qr-hint" data-i18n="bingo.qr_hint">長押しでQRコードを保存</p>
+      </div>
     </aside>
 
     <section class="master-panel">
@@ -1076,12 +1088,6 @@
       <div id="player-card"></div>
       <button class="card-close" id="close-card-btn" type="button" data-i18n="bingo.card_close">閉じる</button>
     </div>
-  </div>
-
-  <div id="host-qr-panel" class="host-qr-panel" hidden>
-    <div id="host-qr-code" class="host-qr-code" role="button" tabindex="0" aria-label="観戦用QRコード。長押しで保存"></div>
-    <p class="host-qr-label" data-i18n="bingo.qr_label">スキャンして観戦</p>
-    <p class="host-qr-hint" data-i18n="bingo.qr_hint">長押しでQRコードを保存</p>
   </div>
 
   <div id="host-qr-save-toast" class="host-qr-save-toast" role="status" aria-live="polite" hidden data-i18n="bingo.qr_saved">
