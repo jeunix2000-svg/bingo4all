@@ -633,8 +633,10 @@
       }
       .master-col-grid { grid-template-rows: repeat(15, minmax(22px, 1fr)); }
       .lobby-card { padding: 1.85rem 1.25rem 1.75rem; }
-      .lobby-letter { width: 2rem; height: 2rem; font-size: 1rem; }
-      .lobby-bingo-letters { gap: 0.35rem; margin-bottom: 0.65rem; }
+      .lobby-cradle-string { height: 0.85rem; }
+      .lobby-cradle-arm .lobby-letter { width: 2rem; height: 2rem; font-size: 1rem; }
+      .lobby-bingo-letters { margin-bottom: 0.65rem; height: 3.5rem; }
+      .lobby-cradle-bar { width: calc(5 * 2rem - 4px); }
       .lobby-orb-1 { width: 2.2rem; height: 2.2rem; font-size: 0.62rem; }
       .lobby-orb-2 { width: 1.85rem; height: 1.85rem; font-size: 0.55rem; }
       .lobby-orb-3 { display: none; }
@@ -735,10 +737,109 @@
     }
 
     .lobby-bingo-letters {
+      position: relative;
       display: flex;
       justify-content: center;
-      gap: 0.45rem;
+      align-items: flex-start;
+      gap: 0;
       margin-bottom: 0.85rem;
+      padding-top: 0.35rem;
+      height: 4.35rem;
+    }
+
+    .lobby-cradle-bar {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(5 * 2.35rem - 6px);
+      height: 4px;
+      background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.08),
+        rgba(255, 215, 0, 0.55) 20%,
+        rgba(255, 215, 0, 0.55) 80%,
+        rgba(255, 255, 255, 0.08)
+      );
+      border-radius: 4px;
+      box-shadow: 0 1px 8px rgba(255, 215, 0, 0.2);
+    }
+
+    .lobby-cradle-unit {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex-shrink: 0;
+      z-index: 1;
+    }
+
+    .lobby-cradle-unit + .lobby-cradle-unit {
+      margin-left: -3px;
+    }
+
+    .lobby-cradle-string {
+      width: 2px;
+      height: 1.1rem;
+      background: linear-gradient(180deg, rgba(255, 215, 0, 0.65), rgba(255, 255, 255, 0.25));
+      border-radius: 1px;
+      flex-shrink: 0;
+    }
+
+    .lobby-cradle-arm {
+      transform-origin: top center;
+      will-change: transform;
+    }
+
+    .lobby-cradle-arm-end-left {
+      animation: cradle-swing-left 3.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+    }
+
+    .lobby-cradle-arm-end-right {
+      animation: cradle-swing-right 3.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+    }
+
+    .lobby-cradle-arm-middle {
+      animation: cradle-middle-nudge 3.2s ease-out infinite;
+    }
+
+    @keyframes cradle-swing-left {
+      0%, 100% { transform: rotate(0deg); }
+      5% { transform: rotate(-38deg); }
+      14% { transform: rotate(0deg); }
+      14%, 48% { transform: rotate(0deg); }
+      57% { transform: rotate(-38deg); }
+      66% { transform: rotate(0deg); }
+      66%, 100% { transform: rotate(0deg); }
+    }
+
+    @keyframes cradle-swing-right {
+      0%, 14% { transform: rotate(0deg); }
+      23% { transform: rotate(38deg); }
+      32% { transform: rotate(0deg); }
+      32%, 48% { transform: rotate(0deg); }
+      52% { transform: rotate(38deg); }
+      61% { transform: rotate(0deg); }
+      61%, 100% { transform: rotate(0deg); }
+    }
+
+    @keyframes cradle-middle-nudge {
+      0%, 100% { transform: translateX(0); }
+      13% { transform: translateX(0); }
+      14% { transform: translateX(2px); }
+      15% { transform: translateX(-1px); }
+      16% { transform: translateX(0); }
+      31% { transform: translateX(0); }
+      32% { transform: translateX(-2px); }
+      33% { transform: translateX(1px); }
+      34% { transform: translateX(0); }
+      60% { transform: translateX(0); }
+      61% { transform: translateX(-2px); }
+      62% { transform: translateX(1px); }
+      63% { transform: translateX(0); }
+      65% { transform: translateX(0); }
+      66% { transform: translateX(2px); }
+      67% { transform: translateX(-1px); }
+      68% { transform: translateX(0); }
     }
 
     .lobby-letter {
@@ -753,19 +854,13 @@
       color: #fff;
       border: 2px solid rgba(255, 255, 255, 0.25);
       box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
-      animation: lobby-letter-float 3.5s ease-in-out infinite;
     }
 
-    .lobby-letter-b { background: linear-gradient(145deg, #ff6b6b, #e74c3c); animation-delay: 0s; }
-    .lobby-letter-i { background: linear-gradient(145deg, #ffe066, #f1c40f); color: #1a1a1a; animation-delay: 0.15s; }
-    .lobby-letter-n { background: linear-gradient(145deg, #5dade2, #3498db); animation-delay: 0.3s; }
-    .lobby-letter-g { background: linear-gradient(145deg, #58d68d, #2ecc71); animation-delay: 0.45s; }
-    .lobby-letter-o { background: linear-gradient(145deg, #bb9fff, #a29bfe); animation-delay: 0.6s; }
-
-    @keyframes lobby-letter-float {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-5px); }
-    }
+    .lobby-letter-b { background: linear-gradient(145deg, #ff6b6b, #e74c3c); }
+    .lobby-letter-i { background: linear-gradient(145deg, #ffe066, #f1c40f); color: #1a1a1a; }
+    .lobby-letter-n { background: linear-gradient(145deg, #5dade2, #3498db); }
+    .lobby-letter-g { background: linear-gradient(145deg, #58d68d, #2ecc71); }
+    .lobby-letter-o { background: linear-gradient(145deg, #bb9fff, #a29bfe); }
 
     .lobby-orbs {
       position: absolute;
@@ -1265,11 +1360,37 @@
           <span class="lobby-orb lobby-orb-3">O71</span>
         </div>
         <div class="lobby-bingo-letters" aria-hidden="true">
-          <span class="lobby-letter lobby-letter-b">B</span>
-          <span class="lobby-letter lobby-letter-i">I</span>
-          <span class="lobby-letter lobby-letter-n">N</span>
-          <span class="lobby-letter lobby-letter-g">G</span>
-          <span class="lobby-letter lobby-letter-o">O</span>
+          <span class="lobby-cradle-bar"></span>
+          <div class="lobby-cradle-unit">
+            <span class="lobby-cradle-string"></span>
+            <span class="lobby-cradle-arm lobby-cradle-arm-end-left">
+              <span class="lobby-letter lobby-letter-b">B</span>
+            </span>
+          </div>
+          <div class="lobby-cradle-unit">
+            <span class="lobby-cradle-string"></span>
+            <span class="lobby-cradle-arm lobby-cradle-arm-middle">
+              <span class="lobby-letter lobby-letter-i">I</span>
+            </span>
+          </div>
+          <div class="lobby-cradle-unit">
+            <span class="lobby-cradle-string"></span>
+            <span class="lobby-cradle-arm lobby-cradle-arm-middle">
+              <span class="lobby-letter lobby-letter-n">N</span>
+            </span>
+          </div>
+          <div class="lobby-cradle-unit">
+            <span class="lobby-cradle-string"></span>
+            <span class="lobby-cradle-arm lobby-cradle-arm-middle">
+              <span class="lobby-letter lobby-letter-g">G</span>
+            </span>
+          </div>
+          <div class="lobby-cradle-unit">
+            <span class="lobby-cradle-string"></span>
+            <span class="lobby-cradle-arm lobby-cradle-arm-end-right">
+              <span class="lobby-letter lobby-letter-o">O</span>
+            </span>
+          </div>
         </div>
         <h1 data-i18n="bingo.lobby_h1">ビンゴ</h1>
       </div>
