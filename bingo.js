@@ -1254,9 +1254,19 @@
     updateGameBar();
   }
 
+  function getGameParticipantCount(game) {
+    if (!game?.digitalCardsEnabled) return null;
+    return Object.values(game.spectatorCards || {}).filter((entry) => entry?.playerCard?.length).length;
+  }
+
+  function formatGameParticipantCount(game) {
+    const count = getGameParticipantCount(game);
+    return count === null ? "—" : String(count);
+  }
+
   function getParticipantCount() {
-    if (!digitalCardsEnabled) return null;
-    return Object.values(spectatorCards || {}).filter((entry) => entry?.playerCard?.length).length;
+    if (!currentGameId) return null;
+    return getGameParticipantCount(loadAllGames()[currentGameId]);
   }
 
   function updateParticipantDisplay() {
@@ -1597,10 +1607,14 @@
       const meta = demo
         ? tr("bingo.game_meta_demo", { host: escapeHtml(game.hostLabel || "Portal Server"), called: game.called.length, pool: game.pool.length })
         : formatGameListMeta(game);
+      const players = formatGameParticipantCount(game);
       li.innerHTML = `
         <div>
           <div class="game-name">${escapeHtml(displayGameName(game))}${demo ? ` <span class="demo-badge">${escapeHtml(tr("bingo.demo_badge"))}</span>` : ""}</div>
           <div class="game-meta">${meta}</div>
+        </div>
+        <div class="game-list-players" aria-label="${tr("bingo.participants_label")}">
+          <strong>${players}</strong>
         </div>
         <div class="game-list-actions">
           ${isOwner ? `<button type="button" class="btn-end-game">${tr("bingo.end_game")}</button>` : ""}
