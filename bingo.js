@@ -100,6 +100,7 @@
   let gamesCache = null;
   let syncInFlight = null;
   let remoteSyncEnabled = true;
+  let remoteQuota = { ipActiveGames: 0, maxActiveGamesPerIp: 2 };
 
   function snapshotState() {
     return `${called.length}:${called[called.length - 1] ?? ""}:${pool.length}`;
@@ -605,6 +606,21 @@
     }
   }
 
+  function applyRemoteQuota(data) {
+    if (!data || typeof data !== "object") return;
+    if (typeof data.ipActiveGames === "number") remoteQuota.ipActiveGames = data.ipActiveGames;
+    if (typeof data.maxActiveGamesPerIp === "number") remoteQuota.maxActiveGamesPerIp = data.maxActiveGamesPerIp;
+  }
+
+  function mergeServerGames(serverGames) {
+    if (!serverGames || typeof serverGames !== "object") return;
+    const merged = mergeGameMaps(ensureGamesCache(), serverGames);
+    gamesCache = merged;
+    try {
+      localStorage.setItem(GAMES_KEY, JSON.stringify(gamesCache));
+    } catch (_) { /* storage full */ }
+  }
+
   async function fetchRemoteGames() {
     if (!remoteSyncEnabled) return null;
     for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -618,6 +634,7 @@
           return null;
         }
         const data = await res.json();
+        applyRemoteQuota(data);
         return data?.games && typeof data.games === "object" ? data.games : null;
       } catch (_) {
         if (attempt < 2) {
@@ -629,15 +646,34 @@
   }
 
   async function pushGamesToServer(games) {
-    if (!remoteSyncEnabled) return;
+    if (!remoteSyncEnabled) return { ok: true };
     try {
       const res = await fetch(SYNC_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({ games, clientId: getClientId() }),
       });
-      if (!res.ok && res.status === 404) remoteSyncEnabled = false;
-    } catch (_) { /* offline */ }
+      let data = null;
+      try {
+        data = await res.json();
+      } catch {
+        data = null;
+      }
+      if (res.status === 429 && data?.error === "IP_GAME_LIMIT") {
+        applyRemoteQuota(data);
+        if (data.games) mergeServerGames(data.games);
+        return { ok: false, error: "IP_GAME_LIMIT", max: data.maxActiveGamesPerIp ?? remoteQuota.maxActiveGamesPerIp };
+      }
+      if (!res.ok) {
+        if (res.status === 404) remoteSyncEnabled = false;
+        return { ok: false };
+      }
+      applyRemoteQuota(data);
+      if (data?.games) mergeServerGames(data.games);
+      return { ok: true };
+    } catch (_) {
+      return { ok: false };
+    }
   }
 
   async function syncFromRemote() {
@@ -696,7 +732,13 @@
     try {
       localStorage.setItem(GAMES_KEY, JSON.stringify(games));
     } catch (_) { /* storage full */ }
-    await pushGamesToServer(games);
+    const result = await pushGamesToServer(games);
+    if (!result.ok && result.error === "IP_GAME_LIMIT") {
+      const err = new Error("IP_GAME_LIMIT");
+      err.code = "IP_GAME_LIMIT";
+      err.max = result.max ?? remoteQuota.maxActiveGamesPerIp;
+      throw err;
+    }
     notifySyncPeers();
   }
 
@@ -1554,17 +1596,35 @@
   }
 
   function startNewGame() {
-    const games = loadAllGames();
-    const active = getUserActiveGames(games);
-    if (active.length >= MAX_ACTIVE_GAMES) {
-      alert(tr("bingo.alert_max_games", { max: MAX_ACTIVE_GAMES }));
-      return;
-    }
-    const game = createFreshGameState();
-    games[game.id] = game;
     void (async () => {
-      await saveAllGames(games);
-      await enterGame(game.id, "host");
+      await syncFromRemote();
+      const games = loadAllGames();
+      const active = getUserActiveGames(games);
+      if (active.length >= MAX_ACTIVE_GAMES) {
+        alert(tr("bingo.alert_max_games", { max: MAX_ACTIVE_GAMES }));
+        return;
+      }
+      const maxIp = remoteQuota.maxActiveGamesPerIp ?? 2;
+      if ((remoteQuota.ipActiveGames ?? 0) >= maxIp) {
+        alert(tr("bingo.alert_ip_game_limit", { max: maxIp }));
+        return;
+      }
+      const game = createFreshGameState();
+      games[game.id] = game;
+      try {
+        await saveAllGames(games);
+        await enterGame(game.id, "host");
+      } catch (err) {
+        delete games[game.id];
+        gamesCache = games;
+        try {
+          localStorage.setItem(GAMES_KEY, JSON.stringify(games));
+        } catch (_) { /* ignore */ }
+        if (err?.code === "IP_GAME_LIMIT") {
+          alert(tr("bingo.alert_ip_game_limit", { max: err.max ?? maxIp }));
+        }
+        updateLobbyUI();
+      }
     })();
   }
 

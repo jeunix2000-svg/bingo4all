@@ -12,12 +12,14 @@ const MAX_GAME_MS = 5 * 60 * 60 * 1000;
 const PRUNE_AGE_MS = 24 * 60 * 60 * 1000;
 const HOST_INACTIVITY_IDLE_MS = 3 * 60 * 1000;
 const HOST_INACTIVITY_GRACE_MS = 60 * 1000;
+const MAX_GAMES_PER_IP = Number(process.env.MAX_GAMES_PER_IP || 2);
 const DATA_DIR = process.env.BINGO_DATA_DIR || path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'bingo-games.json');
 const PORTAL_ORIGIN = (process.env.APP_ORIGIN || process.env.PORTAL_ORIGIN || '*').trim();
 const DEMO_TICK_MS = Number(process.env.DEMO_TICK_MS || 1000);
 
 const app = express();
+app.set('trust proxy', 1);
 app.use(express.json({ limit: '2mb' }));
 
 app.use((req, res, next) => {
@@ -68,19 +70,51 @@ function gameTimestamp(game) {
   return Number(game?.updatedAt || game?.createdAt || 0);
 }
 
-function mergeGames(base, incoming) {
+function getClientIp(req) {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (forwarded) return String(forwarded).split(',')[0].trim();
+  return req.socket?.remoteAddress || req.ip || 'unknown';
+}
+
+function countActiveGamesForIp(games, ip) {
+  if (!ip || ip === 'unknown') return 0;
+  return Object.values(games).filter(
+    (game) => !isDemoGame(game) && isUserGameActive(game) && game.hostIp === ip,
+  ).length;
+}
+
+function mergeGames(base, incoming, clientIp) {
   const preservedDemo = base[DEMO_GAME_ID];
   const out = { ...base };
+  const rejectedNewIds = [];
+  let activeForIp = countActiveGamesForIp(base, clientIp);
+
   for (const [id, game] of Object.entries(incoming || {})) {
     if (!game || typeof game !== 'object') continue;
     const gid = String(game.id || id);
     if (gid === DEMO_GAME_ID || isDemoGame(game)) continue;
-    if (!out[gid] || gameTimestamp(game) >= gameTimestamp(out[gid])) {
-      out[gid] = game;
+
+    const existing = out[gid];
+    const isNew = !existing;
+
+    if (isNew) {
+      if (activeForIp >= MAX_GAMES_PER_IP) {
+        rejectedNewIds.push(gid);
+        continue;
+      }
+      const stored = { ...game, hostIp: clientIp };
+      out[gid] = stored;
+      if (isUserGameActive(stored)) activeForIp += 1;
+      continue;
+    }
+
+    if (gameTimestamp(game) >= gameTimestamp(existing)) {
+      out[gid] = { ...game, hostIp: existing.hostIp || game.hostIp };
     }
   }
+
   if (preservedDemo) out[DEMO_GAME_ID] = preservedDemo;
-  return out;
+  return { games: out, rejectedNewIds };
 }
 
 function isUserGameActive(game) {
@@ -165,11 +199,14 @@ function prepareGames(games) {
   return games;
 }
 
-function respondGames(res, games) {
+function respondGames(res, games, req) {
+  const clientIp = getClientIp(req);
   res.set('Cache-Control', 'no-store');
   res.json({
     games,
     serverTime: Date.now(),
+    ipActiveGames: countActiveGamesForIp(games, clientIp),
+    maxActiveGamesPerIp: MAX_GAMES_PER_IP,
   });
 }
 
@@ -177,10 +214,10 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'bingo4all-api' });
 });
 
-app.get(['/', '/api/games'], (_req, res) => {
+app.get(['/', '/api/games'], (req, res) => {
   const games = prepareGames(loadGames());
   saveGames(games);
-  respondGames(res, games);
+  respondGames(res, games, req);
 });
 
 app.post(['/', '/api/games'], (req, res) => {
@@ -188,14 +225,29 @@ app.post(['/', '/api/games'], (req, res) => {
   if (!incoming || typeof incoming !== 'object') {
     return res.status(400).json({ error: 'INVALID_PAYLOAD' });
   }
-  let merged = mergeGames(loadGames(), incoming);
-  merged = prepareGames(merged);
+  const clientIp = getClientIp(req);
+  const base = prepareGames(loadGames());
+  const { games: merged, rejectedNewIds } = mergeGames(base, incoming, clientIp);
+  const prepared = prepareGames(merged);
+
+  if (rejectedNewIds.length > 0) {
+    return res.status(429).json({
+      error: 'IP_GAME_LIMIT',
+      message: `Maximum ${MAX_GAMES_PER_IP} active games per IP`,
+      maxActiveGamesPerIp: MAX_GAMES_PER_IP,
+      ipActiveGames: countActiveGamesForIp(prepared, clientIp),
+      rejectedGameIds: rejectedNewIds,
+      games: prepared,
+      serverTime: Date.now(),
+    });
+  }
+
   try {
-    saveGames(merged);
+    saveGames(prepared);
   } catch {
     return res.status(500).json({ error: 'SAVE_FAILED' });
   }
-  respondGames(res, merged);
+  respondGames(res, prepared, req);
 });
 
 setInterval(() => {
