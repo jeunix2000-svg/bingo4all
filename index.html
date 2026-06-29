@@ -632,6 +632,12 @@
         min-height: calc(100vh - 44px);
       }
       .master-col-grid { grid-template-rows: repeat(15, minmax(22px, 1fr)); }
+      .lobby-card { padding: 1.85rem 1.25rem 1.75rem; }
+      .lobby-letter { width: 2rem; height: 2rem; font-size: 1rem; }
+      .lobby-bingo-letters { gap: 0.35rem; margin-bottom: 0.65rem; }
+      .lobby-orb-1 { width: 2.2rem; height: 2.2rem; font-size: 0.62rem; }
+      .lobby-orb-2 { width: 1.85rem; height: 1.85rem; font-size: 0.55rem; }
+      .lobby-orb-3 { display: none; }
     }
 
     /* Lobby */
@@ -642,30 +648,198 @@
       justify-content: center;
       padding: 1.5rem;
       min-height: 0;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .bingo-lobby::before,
+    .bingo-lobby::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      pointer-events: none;
+      filter: blur(60px);
+      opacity: 0.35;
+    }
+
+    .bingo-lobby::before {
+      width: 280px;
+      height: 280px;
+      top: 8%;
+      left: 12%;
+      background: rgba(255, 215, 0, 0.25);
+      animation: lobby-glow-drift 12s ease-in-out infinite alternate;
+    }
+
+    .bingo-lobby::after {
+      width: 240px;
+      height: 240px;
+      bottom: 10%;
+      right: 10%;
+      background: rgba(78, 205, 196, 0.2);
+      animation: lobby-glow-drift 14s ease-in-out infinite alternate-reverse;
+    }
+
+    @keyframes lobby-glow-drift {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(24px, -18px) scale(1.08); }
     }
 
     .lobby-card {
+      position: relative;
       width: 100%;
-      max-width: 480px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 20px;
-      padding: 2rem 1.75rem;
+      max-width: 520px;
+      background:
+        linear-gradient(165deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0.03) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 24px;
+      padding: 2.25rem 1.85rem 2rem;
       text-align: center;
+      box-shadow:
+        0 24px 64px rgba(0, 0, 0, 0.45),
+        0 0 0 1px rgba(255, 215, 0, 0.06) inset,
+        0 0 80px rgba(255, 215, 0, 0.06);
+      overflow: hidden;
+    }
+
+    .lobby-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        radial-gradient(circle at 20% 15%, rgba(255, 215, 0, 0.08) 0%, transparent 42%),
+        radial-gradient(circle at 80% 85%, rgba(78, 205, 196, 0.07) 0%, transparent 40%),
+        repeating-linear-gradient(
+          0deg,
+          transparent,
+          transparent 18px,
+          rgba(255, 255, 255, 0.018) 18px,
+          rgba(255, 255, 255, 0.018) 19px
+        ),
+        repeating-linear-gradient(
+          90deg,
+          transparent,
+          transparent 18px,
+          rgba(255, 255, 255, 0.018) 18px,
+          rgba(255, 255, 255, 0.018) 19px
+        );
+      pointer-events: none;
+      border-radius: inherit;
+    }
+
+    .lobby-hero {
+      position: relative;
+      z-index: 1;
+      margin-bottom: 0.5rem;
+      padding: 0.5rem 0 0.25rem;
+    }
+
+    .lobby-bingo-letters {
+      display: flex;
+      justify-content: center;
+      gap: 0.45rem;
+      margin-bottom: 0.85rem;
+    }
+
+    .lobby-letter {
+      width: 2.35rem;
+      height: 2.35rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.15rem;
+      font-weight: 900;
+      border-radius: 50%;
+      color: #fff;
+      border: 2px solid rgba(255, 255, 255, 0.25);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+      animation: lobby-letter-float 3.5s ease-in-out infinite;
+    }
+
+    .lobby-letter-b { background: linear-gradient(145deg, #ff6b6b, #e74c3c); animation-delay: 0s; }
+    .lobby-letter-i { background: linear-gradient(145deg, #ffe066, #f1c40f); color: #1a1a1a; animation-delay: 0.15s; }
+    .lobby-letter-n { background: linear-gradient(145deg, #5dade2, #3498db); animation-delay: 0.3s; }
+    .lobby-letter-g { background: linear-gradient(145deg, #58d68d, #2ecc71); animation-delay: 0.45s; }
+    .lobby-letter-o { background: linear-gradient(145deg, #bb9fff, #a29bfe); animation-delay: 0.6s; }
+
+    @keyframes lobby-letter-float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+
+    .lobby-orbs {
+      position: absolute;
+      inset: -0.5rem -1rem auto;
+      height: 5.5rem;
+      pointer-events: none;
+    }
+
+    .lobby-orb {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      font-weight: 800;
+      color: #fff;
+      border: 2px solid rgba(255, 255, 255, 0.35);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+      animation: lobby-orb-float 5s ease-in-out infinite;
+    }
+
+    .lobby-orb-1 {
+      width: 2.6rem;
+      height: 2.6rem;
+      font-size: 0.72rem;
+      left: 0.5rem;
+      top: 0.2rem;
+      background: radial-gradient(circle at 32% 28%, #5dade2, #2980b9);
+      animation-delay: 0s;
+    }
+
+    .lobby-orb-2 {
+      width: 2.1rem;
+      height: 2.1rem;
+      font-size: 0.62rem;
+      right: 0.75rem;
+      top: 0.6rem;
+      background: radial-gradient(circle at 32% 28%, #58d68d, #27ae60);
+      animation-delay: 1.2s;
+    }
+
+    .lobby-orb-3 {
+      width: 1.85rem;
+      height: 1.85rem;
+      font-size: 0.55rem;
+      right: 2.8rem;
+      top: -0.15rem;
+      background: radial-gradient(circle at 32% 28%, #bb9fff, #8e44ad);
+      animation-delay: 2.4s;
+    }
+
+    @keyframes lobby-orb-float {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-8px) rotate(6deg); }
     }
 
     .lobby-card h1 {
-      font-size: 1.6rem;
-      font-weight: 800;
-      letter-spacing: 0.08em;
+      position: relative;
+      font-size: clamp(2.75rem, 9vw, 4.25rem);
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      line-height: 1.05;
       margin-bottom: 0.35rem;
-      background: linear-gradient(90deg, #ffd700, #ff6b6b);
+      background: linear-gradient(135deg, #fff8dc 0%, #ffd700 35%, #ff9f43 70%, #ff6b6b 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
+      text-shadow: none;
+      filter: drop-shadow(0 4px 24px rgba(255, 215, 0, 0.35));
     }
 
     .lobby-card .lobby-desc {
+      position: relative;
+      z-index: 1;
       font-size: 0.85rem;
       color: rgba(255, 255, 255, 0.45);
       margin-bottom: 1.5rem;
@@ -673,6 +847,8 @@
     }
 
     .lobby-actions {
+      position: relative;
+      z-index: 1;
       display: flex;
       flex-direction: column;
       gap: 0.65rem;
@@ -684,12 +860,16 @@
     }
 
     .lobby-limit {
+      position: relative;
+      z-index: 1;
       margin-top: 1rem;
       font-size: 0.72rem;
       color: rgba(255, 255, 255, 0.35);
     }
 
     .watch-panel {
+      position: relative;
+      z-index: 1;
       margin-top: 1.25rem;
       text-align: left;
       border-top: 1px solid rgba(255, 255, 255, 0.08);
@@ -1078,7 +1258,21 @@
   <div id="bingo-lobby" class="bingo-lobby">
     <div class="lobby-card">
       <div class="lobby-notice hidden" id="lobby-notice" role="alert"></div>
-      <h1 data-i18n="bingo.lobby_h1">ビンゴ</h1>
+      <div class="lobby-hero">
+        <div class="lobby-orbs" aria-hidden="true">
+          <span class="lobby-orb lobby-orb-1">N42</span>
+          <span class="lobby-orb lobby-orb-2">G58</span>
+          <span class="lobby-orb lobby-orb-3">O71</span>
+        </div>
+        <div class="lobby-bingo-letters" aria-hidden="true">
+          <span class="lobby-letter lobby-letter-b">B</span>
+          <span class="lobby-letter lobby-letter-i">I</span>
+          <span class="lobby-letter lobby-letter-n">N</span>
+          <span class="lobby-letter lobby-letter-g">G</span>
+          <span class="lobby-letter lobby-letter-o">O</span>
+        </div>
+        <h1 data-i18n="bingo.lobby_h1">ビンゴ</h1>
+      </div>
       <p class="lobby-desc" data-i18n="bingo.lobby_desc" data-i18n-html>新しいゲームを開始するか、進行中のゲームを観戦できます。<br>同時に最大 20 ゲームまで実行できます。</p>
       <div class="lobby-actions">
         <button class="btn-primary" id="lobby-new-btn" type="button" data-i18n="bingo.lobby_new">新しいゲームを開始</button>
