@@ -1,0 +1,44 @@
+# ローカル開発スタック（Phase 0）。端到端は `docker compose up` で起動。
+services:
+  db:
+    image: pgvector/pgvector:pg16        # PostgreSQL16 + pgvector（citext/pgcrypto はcontribに同梱）
+    environment:
+      POSTGRES_USER: yfc
+      POSTGRES_PASSWORD: yfc_local_dev
+      POSTGRES_DB: yfc_wiki
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U yfc -d yfc_wiki"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  flyway:
+    image: flyway/flyway:10
+    depends_on:
+      db: { condition: service_healthy }
+    command: -url=jdbc:postgresql://db:5432/yfc_wiki -user=yfc -password=yfc_local_dev migrate
+    volumes: ["./db/migrations:/flyway/sql"]
+
+  point-service:
+    build: ./packages/point-service
+    depends_on:
+      flyway: { condition: service_completed_successfully }
+    environment:
+      DATABASE_URL: postgres://yfc:yfc_local_dev@db:5432/yfc_wiki
+      PORT: 8081
+    ports: ["8081:8081"]
+
+  wiki-module:
+    build: ./packages/wiki-module
+    depends_on:
+      flyway: { condition: service_completed_successfully }
+    environment:
+      DATABASE_URL: postgres://yfc:yfc_local_dev@db:5432/yfc_wiki
+      POINT_SERVICE_URL: http://point-service:8081
+      PORT: 8080
+    ports: ["8080:8080"]
+
+volumes:
+  pgdata:

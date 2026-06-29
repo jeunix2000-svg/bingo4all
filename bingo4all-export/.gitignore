@@ -1,0 +1,5 @@
+node_modules/
+api/node_modules/
+api/data/*.tmp.*
+.DS_Store
+*.log

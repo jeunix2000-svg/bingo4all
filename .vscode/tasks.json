@@ -1,0 +1,68 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Serve Portal Locally (port 8080)",
+      "type": "shell",
+      "command": "powershell",
+      "args": ["-File", "${workspaceFolder}/scripts/serve-local.ps1"],
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Build WIKI (Docusaurus)",
+      "type": "shell",
+      "command": "bash",
+      "args": ["${workspaceFolder}/scripts/build-wiki.sh"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Deploy to Apache Server",
+      "type": "shell",
+      "command": "bash",
+      "args": ["${workspaceFolder}/deploy.sh"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Fix Apache Permissions (Remote)",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-c",
+        "ssh ${input:remoteUser}@${input:remoteHost} 'bash /var/www/html/scripts/fix-permissions.sh'"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Watch & Auto Deploy",
+      "type": "shell",
+      "command": "bash",
+      "args": ["${workspaceFolder}/watch-deploy.sh"],
+      "isBackground": true,
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "remoteHost",
+      "type": "promptString",
+      "description": "Remote server IP",
+      "default": "192.168.211.34"
+    },
+    {
+      "id": "remoteUser",
+      "type": "promptString",
+      "description": "SSH user",
+      "default": "root"
+    }
+  ]
+}

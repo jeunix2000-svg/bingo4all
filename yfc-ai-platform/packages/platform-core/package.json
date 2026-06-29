@@ -1,0 +1,8 @@
+{
+  "name": "@yfc/platform-core",
+  "version": "0.1.0",
+  "description": "AI Knowledge Platform core capabilities (Embedding/Vector/RAG/Prompt/MCP)",
+  "type": "module",
+  "main": "src/index.ts",
+  "engines": { "node": ">=20" }
+}

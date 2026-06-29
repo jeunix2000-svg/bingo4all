@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="portal-i18n-title" content="kansou.title">
+  <link rel="stylesheet" href="portal-i18n.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>感想掲示板 | Users Portal</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+      background: #0f1419;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    #bg-cycle { position: fixed; inset: 0; z-index: -2; }
+    .bg-layer { position: absolute; inset: 0; opacity: 0; transition: opacity 5s ease-in-out; }
+    .bg-layer.visible { opacity: 1; }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background:
+        radial-gradient(circle at 15% 20%, rgba(255, 215, 0, 0.06) 0%, transparent 45%),
+        radial-gradient(circle at 85% 80%, rgba(78, 205, 196, 0.06) 0%, transparent 45%);
+      pointer-events: none;
+    }
+
+    .portal-back-btn {
+      position: fixed;
+      top: 0.75rem;
+      left: 0.75rem;
+      z-index: 300;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.45rem 1rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: #1a1a2e;
+      background: linear-gradient(135deg, #ffd700, #ffb347);
+      border: none;
+      border-radius: 50px;
+      text-decoration: none;
+      box-shadow: 0 4px 18px rgba(255, 215, 0, 0.35);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .portal-back-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 22px rgba(255, 215, 0, 0.5);
+      color: #1a1a2e;
+    }
+
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.9rem 2rem;
+      background: rgba(15, 20, 25, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .logo {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-decoration: none;
+      background: linear-gradient(90deg, #ffd700, #ff6b6b);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .nav { display: flex; gap: 1.5rem; list-style: none; flex-wrap: wrap; }
+    .nav a { color: rgba(255, 255, 255, 0.75); text-decoration: none; font-size: 0.9rem; transition: color 0.2s; }
+    .nav a:hover { color: #ffd700; }
+    .nav a.active { color: #ffd700; font-weight: 600; }
+
+    .page-main {
+      flex: 1;
+      width: 100%;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem 3rem;
+    }
+
+    .page-title {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .page-title h1 {
+      font-size: clamp(1.8rem, 5vw, 2.4rem);
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      background: linear-gradient(135deg, #fff 30%, #ffd700 70%, #4ecdc4);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.5rem;
+    }
+
+    .page-title p {
+      color: rgba(255, 255, 255, 0.55);
+      font-size: 0.9rem;
+    }
+
+    .panel {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 1.75rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+    }
+
+    .panel h2 {
+      font-size: 1rem;
+      color: #ffd700;
+      margin-bottom: 1.25rem;
+      letter-spacing: 0.06em;
+    }
+
+    .field { margin-bottom: 1.1rem; }
+
+    .field label {
+      display: block;
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.7);
+      margin-bottom: 0.45rem;
+    }
+
+    .field input,
+    .field textarea {
+      width: 100%;
+      padding: 0.75rem 0.9rem;
+      font-size: 0.95rem;
+      font-family: inherit;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .field input:focus,
+    .field textarea:focus {
+      outline: none;
+      border-color: rgba(255, 215, 0, 0.5);
+      box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.12);
+    }
+
+    .field textarea {
+      min-height: 140px;
+      resize: vertical;
+      line-height: 1.6;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 0.85rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: #1a1a2e;
+      background: linear-gradient(135deg, #ffd700, #ffb347);
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 4px 18px rgba(255, 215, 0, 0.3);
+    }
+
+    .submit-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 22px rgba(255, 215, 0, 0.45);
+    }
+
+    .flash {
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+    }
+
+    .flash.ok {
+      background: rgba(46, 204, 113, 0.15);
+      border: 1px solid rgba(46, 204, 113, 0.35);
+      color: #7dffb0;
+    }
+
+    .flash.err {
+      background: rgba(255, 107, 107, 0.15);
+      border: 1px solid rgba(255, 107, 107, 0.35);
+      color: #ffb3b3;
+    }
+
+    .post-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      max-height: 520px;
+      overflow-y: auto;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+    }
+
+    .list-head {
+      display: grid;
+      grid-template-columns: 48px 100px 120px 1fr 88px;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: rgba(255, 215, 0, 0.12);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #ffd700;
+      letter-spacing: 0.04em;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    .list-row {
+      display: grid;
+      grid-template-columns: 48px 100px 120px 1fr 88px;
+      gap: 0.75rem;
+      padding: 0.9rem 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      align-items: start;
+    }
+
+    .list-row:last-child { border-bottom: none; }
+    .list-row:nth-child(even) { background: rgba(255, 255, 255, 0.02); }
+    .list-row.is-editing {
+      background: rgba(255, 215, 0, 0.06);
+      border-left: 3px solid rgba(255, 215, 0, 0.5);
+    }
+
+    .list-no {
+      font-size: 0.82rem;
+      color: rgba(255, 255, 255, 0.45);
+      text-align: center;
+    }
+
+    .list-name {
+      font-weight: 700;
+      color: #ffd700;
+      font-size: 0.9rem;
+      word-break: break-word;
+    }
+
+    .list-time {
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.45);
+      line-height: 1.4;
+    }
+
+    .list-body {
+      font-size: 0.9rem;
+      line-height: 1.65;
+      color: rgba(255, 255, 255, 0.85);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .list-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .list-btn {
+      padding: 0.3rem 0.5rem;
+      font-size: 0.72rem;
+      font-family: inherit;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+
+    .list-btn-edit {
+      color: #ffd700;
+      background: rgba(255, 215, 0, 0.1);
+      border: 1px solid rgba(255, 215, 0, 0.3);
+    }
+
+    .list-btn-edit:hover {
+      background: rgba(255, 215, 0, 0.2);
+    }
+
+    .list-btn-delete {
+      color: #ffb3b3;
+      background: rgba(255, 107, 107, 0.1);
+      border: 1px solid rgba(255, 107, 107, 0.3);
+    }
+
+    .list-btn-delete:hover {
+      background: rgba(255, 107, 107, 0.2);
+    }
+
+    .list-btn-save {
+      color: #1a1a2e;
+      background: linear-gradient(135deg, #ffd700, #ffb347);
+      border: none;
+    }
+
+    .list-btn-save:hover {
+      filter: brightness(1.08);
+    }
+
+    .list-btn-cancel {
+      color: rgba(255, 255, 255, 0.75);
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .list-btn-cancel:hover {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .list-edit-input,
+    .list-edit-textarea {
+      width: 100%;
+      padding: 0.45rem 0.55rem;
+      font-size: 0.85rem;
+      font-family: inherit;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 215, 0, 0.35);
+      border-radius: 8px;
+    }
+
+    .list-edit-input:focus,
+    .list-edit-textarea:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.15);
+    }
+
+    .list-edit-textarea {
+      min-height: 72px;
+      resize: vertical;
+      line-height: 1.55;
+    }
+
+    .list-count {
+      font-size: 0.82rem;
+      color: rgba(255, 255, 255, 0.45);
+      margin-bottom: 0.85rem;
+    }
+
+    .empty-msg {
+      text-align: center;
+      color: rgba(255, 255, 255, 0.4);
+      font-size: 0.9rem;
+      padding: 2rem 1rem;
+    }
+
+    .site-footer {
+      text-align: center;
+      padding: 1.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      color: rgba(255, 255, 255, 0.4);
+      font-size: 0.85rem;
+    }
+
+    @media (max-width: 520px) {
+      .site-header { flex-direction: column; gap: 0.6rem; padding: 0.8rem 1rem; }
+      .nav { gap: 1rem; }
+      .list-head,
+      .list-row {
+        grid-template-columns: 36px 1fr auto;
+        grid-template-rows: auto auto auto;
+      }
+      .list-head span:nth-child(3),
+      .list-head span:nth-child(4),
+      .list-head span:nth-child(5),
+      .list-row .list-time,
+      .list-row .list-body,
+      .list-row .list-actions {
+        grid-column: 2;
+      }
+      .list-head span:nth-child(1),
+      .list-row .list-no { grid-row: 1 / span 3; align-self: start; padding-top: 0.15rem; }
+      .list-head span:nth-child(2),
+      .list-row .list-name { grid-column: 2; }
+      .list-row .list-actions {
+        grid-column: 2 / span 2;
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+    }
+  </style>
+</head>
+<body>
+  <a class="portal-back-btn" href="index.html" data-i18n="common.back">← ポータルへ戻る</a>
+  <div id="bg-cycle" aria-hidden="true">
+    <div class="bg-layer visible" id="bg-a"></div>
+    <div class="bg-layer" id="bg-b"></div>
+  </div>
+
+  <header class="site-header">
+    <a class="logo" href="index.html" data-i18n="common.logo">Users Portal</a>
+    <nav>
+      <ul class="nav">
+        <li><a href="index.html" data-i18n="common.nav_home">ホーム</a></li>
+        <li><a href="kansou.html" class="active" data-i18n="common.nav_kansou">感想掲示板</a></li>
+        <li><a href="shukkin.html" data-i18n="common.nav_shukkin">出勤管理</a></li>
+        <li><a href="wiki/" data-i18n-wiki-link data-i18n="common.nav_wiki">WIKI</a></li>
+        <li><a href="bingo.html" data-i18n="common.nav_bingo">ビンゴ</a></li>
+        <li><a href="wheel.html" data-i18n="common.nav_wheel">ルーレット</a></li>
+      </ul>
+    </nav>
+    <div data-lang-switcher></div>
+  </header>
+
+  <main class="page-main">
+    <div class="page-title">
+      <h1 data-i18n="kansou.h1">感想掲示板</h1>
+      <p data-i18n="kansou.subtitle">ご意見・ご感想をお気軽にお書きください</p>
+    </div>
+
+    <div id="flash" hidden></div>
+
+    <section class="panel">
+      <h2 data-i18n="kansou.form_title">投稿フォーム</h2>
+      <form id="kansou-form">
+        <div class="field">
+          <label for="author-name" data-i18n="kansou.name_label">お名前</label>
+          <input id="author-name" name="name" type="text" maxlength="50" data-i18n-placeholder="kansou.name_ph" placeholder="例：山田 太郎" required>
+        </div>
+        <div class="field">
+          <label for="kansou-body" data-i18n="kansou.body_label">感想内容</label>
+          <textarea id="kansou-body" name="body" maxlength="500" data-i18n-placeholder="kansou.body_ph" placeholder="イベントやシステムへの感想をご記入ください" required></textarea>
+        </div>
+        <button class="submit-btn" type="submit" data-i18n="kansou.submit">投稿する</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2 data-i18n="kansou.list_title">感想リスト</h2>
+      <p id="list-count" class="list-count" data-i18n="kansou.list_count">投稿数：0 件</p>
+      <div id="post-list" class="post-list"></div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p data-i18n="common.footer">&copy; 2026 Anonymoususers Portal</p>
+  </footer>
+
+  <script src="portal-i18n.js"></script>
+  <script>
+    (function () {
+      const STORAGE_KEY = "portal_kansou_posts";
+      const form = document.getElementById("kansou-form");
+      const nameInput = document.getElementById("author-name");
+      const bodyInput = document.getElementById("kansou-body");
+      const listEl = document.getElementById("post-list");
+      const countEl = document.getElementById("list-count");
+      const flashEl = document.getElementById("flash");
+      let editingId = null;
+
+      function tr(key, vars) {
+        if (window.YFC_I18N) return YFC_I18N.t(key, vars);
+        const fallbacks = {
+          "kansou.edit": "編集",
+          "kansou.delete": "削除",
+          "kansou.save": "保存",
+          "kansou.cancel": "取消",
+          "kansou.flash_deleted": "投稿を削除しました。",
+          "kansou.flash_empty_input": "お名前と感想内容を入力してください。",
+          "kansou.flash_updated": "投稿を更新しました。",
+          "kansou.flash_posted": "投稿しました。ありがとうございます！",
+          "kansou.confirm_delete": "「{name}」の投稿を削除しますか？\nこの操作は取り消せません。",
+          "kansou.list_count_tpl": "投稿数：{n} 件",
+          "kansou.empty": "まだ投稿がありません。最初の感想を書いてみましょう。",
+          "kansou.th_no": "No.",
+          "kansou.th_name": "お名前",
+          "kansou.th_date": "投稿日時",
+          "kansou.th_body": "感想内容",
+          "kansou.th_actions": "操作",
+        };
+        let text = fallbacks[key] || key;
+        if (vars && typeof vars === "object") {
+          Object.keys(vars).forEach(function (k) {
+            text = text.replace(new RegExp("\\{" + k + "\\}", "g"), String(vars[k]));
+          });
+        }
+        return text;
+      }
+
+      function escapeHtml(text) {
+        return String(text)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function newId() {
+        if (typeof crypto !== "undefined" && crypto.randomUUID) {
+          return crypto.randomUUID();
+        }
+        return Date.now().toString(36) + Math.random().toString(36).slice(2);
+      }
+
+      function normalizePosts(posts) {
+        let changed = false;
+        const normalized = posts.map(function (post) {
+          if (!post.id) {
+            changed = true;
+            return Object.assign({}, post, { id: newId() });
+          }
+          return post;
+        });
+        if (changed) savePosts(normalized);
+        return normalized;
+      }
+
+      function loadPosts() {
+        try {
+          return normalizePosts(JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"));
+        } catch (e) {
+          return [];
+        }
+      }
+
+      function savePosts(posts) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(posts));
+      }
+
+      function formatTime(iso) {
+        const d = new Date(iso);
+        if (Number.isNaN(d.getTime())) return "";
+        const pad = function (n) { return String(n).padStart(2, "0"); };
+        return d.getFullYear() + "/" + pad(d.getMonth() + 1) + "/" + pad(d.getDate())
+          + " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
+      }
+
+      function showFlash(message, kind) {
+        flashEl.hidden = false;
+        flashEl.className = "flash " + kind;
+        flashEl.textContent = message;
+        setTimeout(function () { flashEl.hidden = true; }, 3000);
+      }
+
+      function renderViewRow(post, index) {
+        const isEditing = editingId === post.id;
+        if (isEditing) {
+          return (
+            '<div class="list-row is-editing" data-id="' + escapeHtml(post.id) + '">' +
+              '<span class="list-no">' + (index + 1) + '</span>' +
+              '<span class="list-name">' +
+                '<input class="list-edit-input edit-name" type="text" maxlength="50" value="' + escapeHtml(post.name) + '">' +
+              '</span>' +
+              '<time class="list-time">' + escapeHtml(formatTime(post.createdAt)) + '</time>' +
+              '<div class="list-body">' +
+                '<textarea class="list-edit-textarea edit-body" maxlength="500">' + escapeHtml(post.body) + '</textarea>' +
+              '</div>' +
+              '<div class="list-actions">' +
+                '<button type="button" class="list-btn list-btn-save" data-action="save">' + escapeHtml(tr("kansou.save")) + '</button>' +
+                '<button type="button" class="list-btn list-btn-cancel" data-action="cancel">' + escapeHtml(tr("kansou.cancel")) + '</button>' +
+              '</div>' +
+            '</div>'
+          );
+        }
+        return (
+          '<div class="list-row" data-id="' + escapeHtml(post.id) + '">' +
+            '<span class="list-no">' + (index + 1) + '</span>' +
+            '<span class="list-name">' + escapeHtml(post.name) + '</span>' +
+            '<time class="list-time">' + escapeHtml(formatTime(post.createdAt)) + '</time>' +
+            '<div class="list-body">' + escapeHtml(post.body) + '</div>' +
+            '<div class="list-actions">' +
+              '<button type="button" class="list-btn list-btn-edit" data-action="edit">' + escapeHtml(tr("kansou.edit")) + '</button>' +
+              '<button type="button" class="list-btn list-btn-delete" data-action="delete">' + escapeHtml(tr("kansou.delete")) + '</button>' +
+            '</div>' +
+          '</div>'
+        );
+      }
+
+      function renderPosts() {
+        const posts = loadPosts();
+        countEl.textContent = tr("kansou.list_count_tpl", { n: posts.length });
+        if (!posts.length) {
+          editingId = null;
+          listEl.innerHTML = '<p class="empty-msg">' + escapeHtml(tr("kansou.empty")) + '</p>';
+          return;
+        }
+        const rows = posts.map(renderViewRow).join("");
+        listEl.innerHTML =
+          '<div class="list-head">' +
+            '<span>' + escapeHtml(tr("kansou.th_no")) + '</span><span>' + escapeHtml(tr("kansou.th_name")) + '</span><span>' + escapeHtml(tr("kansou.th_date")) + '</span><span>' + escapeHtml(tr("kansou.th_body")) + '</span><span>' + escapeHtml(tr("kansou.th_actions")) + '</span>' +
+          '</div>' + rows;
+      }
+
+      function findPostIndex(posts, id) {
+        return posts.findIndex(function (post) { return post.id === id; });
+      }
+
+      function deletePost(id) {
+        const posts = loadPosts();
+        const index = findPostIndex(posts, id);
+        if (index < 0) return;
+        const post = posts[index];
+        if (!confirm(tr("kansou.confirm_delete", { name: post.name }))) {
+          return;
+        }
+        posts.splice(index, 1);
+        if (editingId === id) editingId = null;
+        savePosts(posts);
+        renderPosts();
+        showFlash(tr("kansou.flash_deleted"), "ok");
+      }
+
+      function startEdit(id) {
+        editingId = id;
+        renderPosts();
+        const row = listEl.querySelector('.list-row[data-id="' + CSS.escape(id) + '"]');
+        const nameField = row && row.querySelector(".edit-name");
+        if (nameField) nameField.focus();
+      }
+
+      function cancelEdit() {
+        editingId = null;
+        renderPosts();
+      }
+
+      function saveEdit(id, row) {
+        const nameField = row.querySelector(".edit-name");
+        const bodyField = row.querySelector(".edit-body");
+        const name = nameField.value.trim();
+        const body = bodyField.value.trim();
+        if (!name || !body) {
+          showFlash(tr("kansou.flash_empty_input"), "err");
+          return;
+        }
+        const posts = loadPosts();
+        const index = findPostIndex(posts, id);
+        if (index < 0) return;
+        posts[index] = Object.assign({}, posts[index], {
+          name: name,
+          body: body,
+          updatedAt: new Date().toISOString(),
+        });
+        editingId = null;
+        savePosts(posts);
+        renderPosts();
+        showFlash(tr("kansou.flash_updated"), "ok");
+      }
+
+      listEl.addEventListener("click", function (e) {
+        const btn = e.target.closest("[data-action]");
+        if (!btn) return;
+        const row = btn.closest(".list-row");
+        if (!row) return;
+        const id = row.dataset.id;
+        const action = btn.dataset.action;
+        if (action === "edit") startEdit(id);
+        else if (action === "delete") deletePost(id);
+        else if (action === "save") saveEdit(id, row);
+        else if (action === "cancel") cancelEdit();
+      });
+
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        const name = nameInput.value.trim();
+        const body = bodyInput.value.trim();
+        if (!name || !body) {
+          showFlash(tr("kansou.flash_empty_input"), "err");
+          return;
+        }
+        const posts = loadPosts();
+        posts.unshift({
+          id: newId(),
+          name: name,
+          body: body,
+          createdAt: new Date().toISOString(),
+        });
+        savePosts(posts);
+        bodyInput.value = "";
+        renderPosts();
+        showFlash(tr("kansou.flash_posted"), "ok");
+      });
+
+      document.addEventListener("portal-lang-change", function () {
+        renderPosts();
+      });
+
+      renderPosts();
+    })();
+
+    const bgA = document.getElementById("bg-a");
+    const bgB = document.getElementById("bg-b");
+    if (bgA && bgB) {
+      const BG_THEMES = [
+        "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
+        "linear-gradient(135deg, #2c0a0a 0%, #5c1a1a 50%, #8b2020 100%)",
+        "linear-gradient(135deg, #3d3200 0%, #6b5a00 50%, #9a8200 100%)",
+        "linear-gradient(135deg, #0a1a3d 0%, #123a7a 50%, #1a5299 100%)",
+        "linear-gradient(135deg, #0a2e1a 0%, #145c32 50%, #1e8449 100%)",
+        "linear-gradient(135deg, #2a0a3d 0%, #4a1575 50%, #6a1fa8 100%)",
+      ];
+      let bgIndex = 0;
+      let useA = true;
+      bgA.style.background = BG_THEMES[0];
+      setInterval(function () {
+        bgIndex = (bgIndex + 1) % BG_THEMES.length;
+        const next = useA ? bgB : bgA;
+        const current = useA ? bgA : bgB;
+        next.style.background = BG_THEMES[bgIndex];
+        next.classList.add("visible");
+        current.classList.remove("visible");
+        useA = !useA;
+      }, 10000);
+    }
+  </script>
+</body>
+</html>

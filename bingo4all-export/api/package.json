@@ -1,0 +1,16 @@
+{
+  "name": "bingo4all-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bingo4All game state sync API for Render",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

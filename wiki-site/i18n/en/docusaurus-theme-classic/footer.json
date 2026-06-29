@@ -1,0 +1,29 @@
+{
+  "link.title.設計": {
+    "message": "Design"
+  },
+  "link.title.ドキュメント": {
+    "message": "Docs"
+  },
+  "link.title.リンク": {
+    "message": "Links"
+  },
+  "link.item.label.プラットフォーム": {
+    "message": "Platform"
+  },
+  "link.item.label.はじめに": {
+    "message": "Introduction"
+  },
+  "link.item.label.ポイントサービス": {
+    "message": "Points Service"
+  },
+  "link.item.label.ロードマップ": {
+    "message": "Roadmap"
+  },
+  "link.item.label.ポータルへ戻る": {
+    "message": "Back to Portal"
+  },
+  "copyright": {
+    "message": "Copyright © 2026 YFC AI Knowledge Platform."
+  }
+}

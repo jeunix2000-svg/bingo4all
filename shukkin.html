@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="portal-i18n-title" content="shukkin.title">
+  <link rel="stylesheet" href="portal-i18n.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>出勤管理 | YFC Portal</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+      background: #0f1419;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    #bg-cycle { position: fixed; inset: 0; z-index: -2; }
+    .bg-layer { position: absolute; inset: 0; opacity: 0; transition: opacity 5s ease-in-out; }
+    .bg-layer.visible { opacity: 1; }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background:
+        radial-gradient(circle at 15% 20%, rgba(46, 204, 113, 0.06) 0%, transparent 45%),
+        radial-gradient(circle at 85% 80%, rgba(52, 152, 219, 0.06) 0%, transparent 45%);
+      pointer-events: none;
+    }
+
+    .portal-back-btn {
+      position: fixed;
+      top: 0.75rem;
+      left: 0.75rem;
+      z-index: 300;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.45rem 1rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: #1a1a2e;
+      background: linear-gradient(135deg, #ffd700, #ffb347);
+      border: none;
+      border-radius: 50px;
+      text-decoration: none;
+      box-shadow: 0 4px 18px rgba(255, 215, 0, 0.35);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .portal-back-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 22px rgba(255, 215, 0, 0.5);
+      color: #1a1a2e;
+    }
+
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.9rem 2rem;
+      background: rgba(15, 20, 25, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .logo {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-decoration: none;
+      background: linear-gradient(90deg, #ffd700, #ff6b6b);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .nav { display: flex; gap: 1.5rem; list-style: none; flex-wrap: wrap; }
+    .nav a { color: rgba(255, 255, 255, 0.75); text-decoration: none; font-size: 0.9rem; transition: color 0.2s; }
+    .nav a:hover { color: #ffd700; }
+    .nav a.active { color: #ffd700; font-weight: 600; }
+
+    .page-main {
+      flex: 1;
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem 3rem;
+    }
+
+    .page-title {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .page-title h1 {
+      font-size: clamp(1.8rem, 5vw, 2.4rem);
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      background: linear-gradient(135deg, #fff 30%, #2ecc71 70%, #3498db);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.5rem;
+    }
+
+    .page-title p {
+      color: rgba(255, 255, 255, 0.55);
+      font-size: 0.9rem;
+    }
+
+    .user-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.65rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .user-badge {
+      font-weight: 700;
+      color: #ffd700;
+      font-size: 0.95rem;
+    }
+
+    .role-badge {
+      display: inline-block;
+      padding: 0.2rem 0.65rem;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      border-radius: 50px;
+    }
+
+    .role-badge.user {
+      color: #7dffb0;
+      background: rgba(46, 204, 113, 0.15);
+      border: 1px solid rgba(46, 204, 113, 0.35);
+    }
+
+    .role-badge.admin {
+      color: #a8d4ff;
+      background: rgba(52, 152, 219, 0.15);
+      border: 1px solid rgba(52, 152, 219, 0.35);
+    }
+
+    .logout-btn {
+      padding: 0.35rem 0.85rem;
+      font-size: 0.78rem;
+      font-family: inherit;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.85);
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 50px;
+      cursor: pointer;
+    }
+
+    .logout-btn:hover { background: rgba(255, 255, 255, 0.12); }
+
+    .panel {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 1.75rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+    }
+
+    .panel h2 {
+      font-size: 1rem;
+      color: #2ecc71;
+      margin-bottom: 1.25rem;
+      letter-spacing: 0.06em;
+    }
+
+    .panel h2.admin-title { color: #3498db; }
+
+    .field { margin-bottom: 1.1rem; }
+
+    .field label {
+      display: block;
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.7);
+      margin-bottom: 0.45rem;
+    }
+
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%;
+      padding: 0.75rem 0.9rem;
+      font-size: 0.95rem;
+      font-family: inherit;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .field select option { background: #1a2030; }
+
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus {
+      outline: none;
+      border-color: rgba(46, 204, 113, 0.5);
+      box-shadow: 0 0 0 3px rgba(46, 204, 113, 0.12);
+    }
+
+    .field textarea {
+      min-height: 90px;
+      resize: vertical;
+      line-height: 1.6;
+    }
+
+    .field-hint {
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.4);
+      margin-top: 0.35rem;
+    }
+
+    .auth-tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .auth-tab {
+      flex: 1;
+      padding: 0.7rem 1rem;
+      font-size: 0.9rem;
+      font-family: inherit;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.65);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    .auth-tab.active {
+      color: #1a1a2e;
+      background: linear-gradient(135deg, #2ecc71, #27ae60);
+      border-color: transparent;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 0.85rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: #1a1a2e;
+      background: linear-gradient(135deg, #2ecc71, #27ae60);
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 4px 18px rgba(46, 204, 113, 0.3);
+    }
+
+    .submit-btn:hover { transform: translateY(-1px); }
+
+    .worker-display {
+      padding: 0.85rem 1rem;
+      margin-bottom: 1rem;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .worker-display strong { color: #ffd700; }
+
+    .status-card {
+      text-align: center;
+      padding: 1.25rem 1rem;
+      margin-bottom: 1.25rem;
+      border-radius: 14px;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .status-label {
+      font-size: 0.78rem;
+      color: rgba(255, 255, 255, 0.45);
+      letter-spacing: 0.08em;
+      margin-bottom: 0.35rem;
+    }
+
+    .status-value {
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+    }
+
+    .status-value.idle { color: rgba(255, 255, 255, 0.55); }
+    .status-value.working { color: #2ecc71; }
+    .status-value.done { color: #3498db; }
+
+    .status-times {
+      margin-top: 0.65rem;
+      font-size: 0.82rem;
+      color: rgba(255, 255, 255, 0.5);
+      line-height: 1.6;
+    }
+
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    .btn-row.compact { margin-top: 0.75rem; }
+
+    .punch-btn {
+      padding: 0.9rem 1rem;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+    }
+
+    .punch-btn-in {
+      color: #0f1419;
+      background: linear-gradient(135deg, #2ecc71, #27ae60);
+      box-shadow: 0 4px 18px rgba(46, 204, 113, 0.3);
+    }
+
+    .punch-btn-out {
+      color: #fff;
+      background: linear-gradient(135deg, #3498db, #2980b9);
+      box-shadow: 0 4px 18px rgba(52, 152, 219, 0.3);
+    }
+
+    .punch-btn:hover:not(:disabled) { transform: translateY(-1px); }
+    .punch-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .flash {
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+    }
+
+    .flash.ok {
+      background: rgba(46, 204, 113, 0.15);
+      border: 1px solid rgba(46, 204, 113, 0.35);
+      color: #7dffb0;
+    }
+
+    .flash.err {
+      background: rgba(255, 107, 107, 0.15);
+      border: 1px solid rgba(255, 107, 107, 0.35);
+      color: #ffb3b3;
+    }
+
+    .record-list {
+      max-height: 360px;
+      overflow-y: auto;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+    }
+
+    .list-head,
+    .list-row {
+      display: grid;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      align-items: center;
+    }
+
+    .list-head.my-head,
+    .list-row.my-row { grid-template-columns: 90px 1fr 80px 88px; }
+
+    .list-head.admin-head,
+    .list-row.admin-row { grid-template-columns: 100px 90px 1fr 88px; }
+
+    .list-head.user-head,
+    .list-row.user-row { grid-template-columns: 100px 1fr 100px 80px; }
+
+    .list-head {
+      background: rgba(46, 204, 113, 0.12);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #2ecc71;
+      letter-spacing: 0.04em;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    .list-head.admin-head { background: rgba(52, 152, 219, 0.12); color: #3498db; }
+    .list-head.user-head { background: rgba(255, 215, 0, 0.1); color: #ffd700; }
+
+    .list-row {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 0.85rem;
+    }
+
+    .list-row:last-child { border-bottom: none; }
+    .list-row:nth-child(even) { background: rgba(255, 255, 255, 0.02); }
+
+    .list-name { font-weight: 700; color: #ffd700; word-break: break-word; }
+    .list-time { color: rgba(255, 255, 255, 0.75); }
+    .list-duration { color: rgba(255, 255, 255, 0.55); font-size: 0.8rem; }
+
+    .list-btn {
+      padding: 0.3rem 0.5rem;
+      font-size: 0.68rem;
+      font-family: inherit;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .list-btn-edit {
+      color: #ffd700;
+      background: rgba(255, 215, 0, 0.1);
+      border: 1px solid rgba(255, 215, 0, 0.3);
+    }
+
+    .list-count {
+      font-size: 0.82rem;
+      color: rgba(255, 255, 255, 0.45);
+      margin-bottom: 0.85rem;
+    }
+
+    .request-item {
+      padding: 1rem;
+      margin-bottom: 0.65rem;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .request-item.pending-review {
+      border-color: rgba(255, 215, 0, 0.25);
+      background: rgba(255, 215, 0, 0.05);
+    }
+
+    .request-title {
+      font-weight: 700;
+      color: #ffd700;
+      margin-bottom: 0.35rem;
+      font-size: 0.9rem;
+    }
+
+    .request-meta {
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.45);
+      margin-bottom: 0.5rem;
+    }
+
+    .request-body {
+      font-size: 0.85rem;
+      line-height: 1.65;
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .req-badge {
+      display: inline-block;
+      padding: 0.12rem 0.45rem;
+      margin-right: 0.4rem;
+      font-size: 0.68rem;
+      font-weight: 700;
+      border-radius: 50px;
+    }
+
+    .req-badge.pending { color: #ffd700; background: rgba(255, 215, 0, 0.12); }
+    .req-badge.approved { color: #7dffb0; background: rgba(46, 204, 113, 0.12); }
+    .req-badge.rejected { color: #ffb3b3; background: rgba(255, 107, 107, 0.12); }
+
+    .empty-msg {
+      text-align: center;
+      color: rgba(255, 255, 255, 0.4);
+      font-size: 0.9rem;
+      padding: 2rem 1rem;
+    }
+
+    .site-footer {
+      text-align: center;
+      padding: 1.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      color: rgba(255, 255, 255, 0.4);
+      font-size: 0.85rem;
+    }
+
+    @media (max-width: 640px) {
+      .site-header { flex-direction: column; gap: 0.6rem; padding: 0.8rem 1rem; }
+      .nav { gap: 1rem; }
+      .btn-row { grid-template-columns: 1fr; }
+      .list-head.my-head,
+      .list-row.my-row,
+      .list-head.admin-head,
+      .list-row.admin-row,
+      .list-head.user-head,
+      .list-row.user-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <a class="portal-back-btn" href="index.html" data-i18n="common.back">← ポータルへ戻る</a>
+  <div id="bg-cycle" aria-hidden="true">
+    <div class="bg-layer visible" id="bg-a"></div>
+    <div class="bg-layer" id="bg-b"></div>
+  </div>
+
+  <header class="site-header">
+    <a class="logo" href="index.html">YFC Portal</a>
+    <nav>
+      <ul class="nav">
+        <li><a href="index.html" data-i18n="common.nav_home">ホーム</a></li>
+        <li><a href="kansou.html" data-i18n="common.nav_kansou">感想掲示板</a></li>
+        <li><a href="shukkin.html" class="active" data-i18n="common.nav_shukkin">出勤管理</a></li>
+        <li><a href="wiki/" data-i18n-wiki-link data-i18n="common.nav_wiki">WIKI</a></li>
+        <li><a href="bingo.html" data-i18n="common.nav_bingo">ビンゴ</a></li>
+        <li><a href="wheel.html" data-i18n="common.nav_wheel">ルーレット</a></li>
+      </ul>
+    </nav>
+    <div data-lang-switcher></div>
+  </header>
+
+  <main class="page-main">
+    <div class="page-title">
+      <h1 data-i18n="shukkin.h1">出勤管理</h1>
+      <p data-i18n="shukkin.subtitle">ログイン後、出勤・退勤打刻と勤怠修正申請が利用できます</p>
+    </div>
+
+    <div id="flash" hidden></div>
+    <div id="user-bar" class="user-bar" hidden></div>
+
+    <section id="auth-view" class="panel">
+      <h2 data-i18n="shukkin.auth_h2">ログイン / 新規登録</h2>
+      <div class="auth-tabs">
+        <button type="button" class="auth-tab active" data-tab="login" data-i18n="shukkin.tab_login">ログイン</button>
+        <button type="button" class="auth-tab" data-tab="register" data-i18n="shukkin.tab_register">メールで新規登録</button>
+      </div>
+
+      <div id="login-panel">
+        <form id="login-form">
+          <div class="field">
+            <label for="login-id" data-i18n="shukkin.login_id_label">ユーザー名 または メール</label>
+            <input id="login-id" type="text" autocomplete="username" data-i18n-placeholder="shukkin.login_id_ph" placeholder="root001 または user@example.com" required>
+          </div>
+          <div class="field">
+            <label for="login-password" data-i18n="shukkin.password_label">パスワード</label>
+            <input id="login-password" type="password" autocomplete="current-password" required>
+          </div>
+          <button class="submit-btn" type="submit" data-i18n="shukkin.login_submit">ログイン</button>
+          <p class="field-hint" data-i18n="shukkin.login_hint">初期管理者：root001 / 001root</p>
+        </form>
+      </div>
+
+      <div id="register-panel" hidden>
+        <form id="register-form">
+          <div class="field">
+            <label for="reg-username" data-i18n="shukkin.reg_username">ユーザー名</label>
+            <input id="reg-username" type="text" maxlength="50" autocomplete="username" required>
+          </div>
+          <div class="field">
+            <label for="reg-email" data-i18n="shukkin.reg_email">メールアドレス</label>
+            <input id="reg-email" type="email" autocomplete="email" placeholder="user@example.com" required>
+          </div>
+          <div class="field">
+            <label for="reg-display-name" data-i18n="shukkin.reg_display">表示名（お名前）</label>
+            <input id="reg-display-name" type="text" maxlength="50" autocomplete="name" required>
+          </div>
+          <div class="field">
+            <label for="reg-password" data-i18n="shukkin.reg_password">パスワード</label>
+            <input id="reg-password" type="password" autocomplete="new-password" minlength="6" required>
+          </div>
+          <div class="field">
+            <label for="reg-password2" data-i18n="shukkin.reg_password2">パスワード（確認）</label>
+            <input id="reg-password2" type="password" autocomplete="new-password" minlength="6" required>
+          </div>
+          <button class="submit-btn" type="submit" data-i18n="shukkin.reg_submit">ユーザー登録</button>
+          <p class="field-hint" data-i18n="shukkin.reg_hint">一般ユーザーとして登録されます。管理者の追加は管理者のみ可能です。</p>
+        </form>
+      </div>
+    </section>
+
+    <div id="app-view" hidden>
+      <section class="panel">
+        <h2 data-i18n="shukkin.punch_h2">打刻</h2>
+        <div class="worker-display"><span data-i18n="shukkin.logged_in">ログイン中：</span><strong id="worker-name-display">—</strong></div>
+        <div class="status-card">
+          <p class="status-label" data-i18n="shukkin.status_label">本日のステータス</p>
+          <p id="status-value" class="status-value idle" data-i18n="shukkin.status_idle">未出勤</p>
+          <div id="status-times" class="status-times"></div>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="punch-btn punch-btn-in" id="punch-in-btn" data-i18n="shukkin.punch_in">出勤</button>
+          <button type="button" class="punch-btn punch-btn-out" id="punch-out-btn" data-i18n="shukkin.punch_out">退勤</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2 data-i18n="shukkin.my_records_h2">自分の勤怠記録</h2>
+        <p id="my-list-count" class="list-count" data-i18n="shukkin.my_records_count">記録数：0 件</p>
+        <div id="my-record-list" class="record-list"></div>
+      </section>
+
+      <section class="panel" id="request-panel">
+        <h2 data-i18n="shukkin.request_h2">勤怠修正申請</h2>
+        <form id="request-form">
+          <div class="field">
+            <label for="req-record-id" data-i18n="shukkin.req_record">対象記録</label>
+            <select id="req-record-id" required></select>
+          </div>
+          <div class="btn-row">
+            <div class="field">
+              <label for="req-clock-in" data-i18n="shukkin.req_clock_in">変更後 出勤 (HH:MM)</label>
+              <input id="req-clock-in" type="time" required>
+            </div>
+            <div class="field">
+              <label for="req-clock-out" data-i18n="shukkin.req_clock_out">変更後 退勤 (HH:MM)</label>
+              <input id="req-clock-out" type="time" required>
+            </div>
+          </div>
+          <div class="field">
+            <label for="req-reason" data-i18n="shukkin.req_reason">修正理由</label>
+            <textarea id="req-reason" maxlength="500" data-i18n-placeholder="shukkin.req_reason_ph" placeholder="打刻忘れ、早退、残業など" required></textarea>
+          </div>
+          <button class="submit-btn" type="submit" data-i18n="shukkin.req_submit">修正申請を送信</button>
+        </form>
+        <p id="my-request-count" class="list-count" style="margin-top:1.25rem" data-i18n="shukkin.my_requests_count">申請数：0 件</p>
+        <div id="my-request-list"></div>
+      </section>
+
+      <section class="panel" data-admin-only hidden>
+        <h2 class="admin-title" data-i18n="shukkin.admin_approve_h2">修正申請の承認</h2>
+        <p id="admin-request-count" class="list-count" data-i18n="shukkin.admin_pending_count">未処理：0 件</p>
+        <div id="admin-request-list"></div>
+      </section>
+
+      <section class="panel" data-admin-only hidden>
+        <h2 class="admin-title" data-i18n="shukkin.admin_all_h2">全ユーザーの勤怠記録（直接修正）</h2>
+        <p id="admin-list-count" class="list-count" data-i18n="shukkin.admin_all_count">全記録：0 件</p>
+        <div id="admin-record-list" class="record-list"></div>
+      </section>
+
+      <section class="panel" data-admin-only hidden>
+        <h2 class="admin-title" data-i18n="shukkin.admin_users_h2">ユーザー管理</h2>
+        <form id="add-user-form">
+          <div class="btn-row">
+            <div class="field">
+              <label for="add-username" data-i18n="shukkin.reg_username">ユーザー名</label>
+              <input id="add-username" type="text" maxlength="50" required>
+            </div>
+            <div class="field">
+              <label for="add-email" data-i18n="shukkin.add_email">メール</label>
+              <input id="add-email" type="email" required>
+            </div>
+          </div>
+          <div class="btn-row">
+            <div class="field">
+              <label for="add-display-name" data-i18n="shukkin.add_display">表示名</label>
+              <input id="add-display-name" type="text" maxlength="50" required>
+            </div>
+            <div class="field">
+              <label for="add-role" data-i18n="shukkin.add_role">権限</label>
+              <select id="add-role">
+                <option value="user" data-i18n="shukkin.role_user">ユーザー</option>
+                <option value="admin" data-i18n="shukkin.role_admin">管理者</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="add-password" data-i18n="shukkin.add_password">初期パスワード</label>
+            <input id="add-password" type="password" minlength="6" required>
+          </div>
+          <button class="submit-btn" type="submit" data-i18n="shukkin.add_submit">ユーザーを追加</button>
+          <p class="field-hint" data-i18n="shukkin.add_hint">管理者のみ、一般ユーザー・管理者を追加できます。</p>
+        </form>
+        <div id="admin-user-list" class="record-list" style="margin-top:1.25rem"></div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <p data-i18n="shukkin.footer">&copy; 2026 YFC Portal</p>
+  </footer>
+
+  <script src="portal-i18n.js"></script>
+  <script src="shukkin.js"></script>
+  <script>
+    const bgA = document.getElementById("bg-a");
+    const bgB = document.getElementById("bg-b");
+    if (bgA && bgB) {
+      const BG_THEMES = [
+        "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
+        "linear-gradient(135deg, #2c0a0a 0%, #5c1a1a 50%, #8b2020 100%)",
+        "linear-gradient(135deg, #3d3200 0%, #6b5a00 50%, #9a8200 100%)",
+        "linear-gradient(135deg, #0a1a3d 0%, #123a7a 50%, #1a5299 100%)",
+        "linear-gradient(135deg, #0a2e1a 0%, #145c32 50%, #1e8449 100%)",
+        "linear-gradient(135deg, #2a0a3d 0%, #4a1575 50%, #6a1fa8 100%)",
+      ];
+      let bgIndex = 0;
+      let useA = true;
+      bgA.style.background = BG_THEMES[0];
+      setInterval(function () {
+        bgIndex = (bgIndex + 1) % BG_THEMES.length;
+        const next = useA ? bgB : bgA;
+        const current = useA ? bgA : bgB;
+        next.style.background = BG_THEMES[bgIndex];
+        next.classList.add("visible");
+        current.classList.remove("visible");
+        useA = !useA;
+      }, 10000);
+    }
+  </script>
+</body>
+</html>

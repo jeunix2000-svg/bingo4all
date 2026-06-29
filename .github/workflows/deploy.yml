@@ -1,0 +1,79 @@
+name: Deploy to Apache Server
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - '**.html'
+      - '**.css'
+      - '**.js'
+      - 'deploy.sh'
+      - 'scripts/**'
+      - 'wiki-site/**'
+      - 'wiki/**'
+      - 'yfc-ai-platform/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build Docusaurus WIKI
+        run: bash scripts/build-wiki.sh
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Add server to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Sync files to server
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR }}
+        run: |
+          DEPLOY_USER="${DEPLOY_USER:-root}"
+          DEPLOY_DIR="${DEPLOY_DIR:-/var/www/html}"
+          REMOTE="${DEPLOY_USER}@${DEPLOY_HOST}"
+
+          rsync -avz --delete \
+            --include='*.html' --include='*.css' --include='*.js' \
+            --include='scripts/***' --include='deploy.config' \
+            --include='data/***' \
+            --include='wiki/***' \
+            --include='yfc-ai-platform/**' \
+            --exclude='*' \
+            ./ "${REMOTE}:${DEPLOY_DIR}/"
+
+      - name: Fix Apache permissions
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR }}
+        run: |
+          DEPLOY_USER="${DEPLOY_USER:-root}"
+          DEPLOY_DIR="${DEPLOY_DIR:-/var/www/html}"
+          ssh "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "bash ${DEPLOY_DIR}/scripts/fix-permissions.sh ${DEPLOY_DIR}"
+
+      - name: Verify deployment
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          curl -sf "http://${DEPLOY_HOST}/" > /dev/null
+          curl -sf "http://${DEPLOY_HOST}/wiki/" > /dev/null
+          echo "Site is reachable at http://${DEPLOY_HOST}/"
+          echo "WIKI is reachable at http://${DEPLOY_HOST}/wiki/"

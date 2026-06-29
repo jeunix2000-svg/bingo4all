@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="portal-i18n-title" content="index.title">
+  <title>ラッキーポータル | ホーム</title>
+  <link rel="stylesheet" href="portal-i18n.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+      background: #0f1419;
+      color: #fff;
+      overflow-x: hidden;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    #bg-cycle { position: fixed; inset: 0; z-index: -2; }
+    .bg-layer { position: absolute; inset: 0; opacity: 0; transition: opacity 5s ease-in-out; }
+    .bg-layer.visible { opacity: 1; }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background:
+        radial-gradient(circle at 15% 20%, rgba(255, 215, 0, 0.06) 0%, transparent 45%),
+        radial-gradient(circle at 85% 80%, rgba(78, 205, 196, 0.06) 0%, transparent 45%);
+      pointer-events: none;
+    }
+
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.9rem 2rem;
+      background: rgba(15, 20, 25, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .logo {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-decoration: none;
+      background: linear-gradient(90deg, #ffd700, #ff6b6b);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .nav { display: flex; gap: 1.5rem; list-style: none; flex-wrap: wrap; }
+    .nav a { color: rgba(255, 255, 255, 0.75); text-decoration: none; font-size: 0.9rem; transition: color 0.2s; }
+    .nav a:hover { color: #ffd700; }
+    .nav a.yfc-link { color: #7eb8ff; font-weight: 600; }
+    .nav a.yfc-link:hover { color: #a8d4ff; }
+
+    .page-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 1.5rem;
+    }
+
+    .hero {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    .hero-badge {
+      display: inline-block;
+      padding: 0.35rem 1rem;
+      margin-bottom: 1.2rem;
+      font-size: 0.8rem;
+      letter-spacing: 0.12em;
+      color: #ffd700;
+      border: 1px solid rgba(255, 215, 0, 0.35);
+      border-radius: 50px;
+      background: rgba(255, 215, 0, 0.08);
+    }
+
+    .hero h1 {
+      font-size: clamp(2.4rem, 6vw, 3.5rem);
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      background: linear-gradient(135deg, #fff 30%, #ffd700 70%, #4ecdc4);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .game-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 240px));
+      gap: 2rem;
+      width: 100%;
+      max-width: 1320px;
+      justify-content: center;
+    }
+
+    .game-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.5rem 1.5rem 2rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px;
+      text-decoration: none;
+      color: inherit;
+      transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+    }
+
+    .game-card:hover {
+      transform: translateY(-8px);
+      border-color: rgba(255, 215, 0, 0.35);
+      box-shadow: 0 16px 40px rgba(255, 215, 0, 0.12);
+    }
+
+    .game-icon {
+      width: 120px;
+      height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1.25rem;
+      border-radius: 50%;
+      font-size: 4.5rem;
+      line-height: 1;
+    }
+
+    .game-card.wheel .game-icon {
+      background: radial-gradient(circle, rgba(255, 215, 0, 0.2) 0%, rgba(255, 107, 107, 0.15) 100%);
+      box-shadow: 0 0 40px rgba(255, 215, 0, 0.2);
+    }
+
+    .game-card.bingo .game-icon {
+      background: radial-gradient(circle, rgba(52, 152, 219, 0.2) 0%, rgba(46, 204, 113, 0.15) 100%);
+      box-shadow: 0 0 40px rgba(52, 152, 219, 0.2);
+    }
+
+    .game-card.yfc .game-icon {
+      background: radial-gradient(circle, rgba(46, 90, 136, 0.28) 0%, rgba(138, 106, 30, 0.18) 100%);
+      box-shadow: 0 0 40px rgba(46, 90, 136, 0.28);
+    }
+
+    .game-card.kansou .game-icon {
+      background: radial-gradient(circle, rgba(155, 89, 182, 0.25) 0%, rgba(78, 205, 196, 0.18) 100%);
+      box-shadow: 0 0 40px rgba(155, 89, 182, 0.25);
+    }
+
+    .game-card.shukkin .game-icon {
+      background: radial-gradient(circle, rgba(46, 204, 113, 0.22) 0%, rgba(52, 152, 219, 0.18) 100%);
+      box-shadow: 0 0 40px rgba(46, 204, 113, 0.22);
+    }
+
+    .game-card.wiki .game-icon {
+      background: radial-gradient(circle, rgba(241, 196, 15, 0.22) 0%, rgba(230, 126, 34, 0.18) 100%);
+      box-shadow: 0 0 40px rgba(241, 196, 15, 0.22);
+    }
+
+    .game-card.platform .game-icon {
+      background: radial-gradient(circle, rgba(52, 152, 219, 0.25) 0%, rgba(126, 184, 255, 0.18) 100%);
+      box-shadow: 0 0 40px rgba(52, 152, 219, 0.25);
+    }
+
+    .game-card.wikiapp .game-icon {
+      background: radial-gradient(circle, rgba(52, 152, 219, 0.28) 0%, rgba(46, 204, 113, 0.15) 100%);
+      box-shadow: 0 0 40px rgba(52, 152, 219, 0.28);
+    }
+
+    .game-card h2 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #ffd700;
+      margin-bottom: 0.5rem;
+      letter-spacing: 0.08em;
+    }
+
+    .game-card p {
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.5);
+      text-align: center;
+      line-height: 1.55;
+    }
+
+    .site-footer {
+      text-align: center;
+      padding: 1.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      color: rgba(255, 255, 255, 0.4);
+      font-size: 0.85rem;
+    }
+
+    @media (max-width: 900px) {
+      .game-grid { grid-template-columns: repeat(2, minmax(200px, 280px)); max-width: 640px; }
+    }
+
+    @media (max-width: 520px) {
+      .site-header { flex-direction: column; gap: 0.6rem; padding: 0.8rem 1rem; }
+      .nav { gap: 1rem; }
+      .game-grid { grid-template-columns: 1fr; max-width: 300px; }
+      .game-icon { width: 100px; height: 100px; font-size: 3.5rem; }
+    }
+  </style>
+</head>
+<body>
+  <div id="bg-cycle" aria-hidden="true">
+    <div class="bg-layer visible" id="bg-a"></div>
+    <div class="bg-layer" id="bg-b"></div>
+  </div>
+
+  <header class="site-header">
+    <a class="logo" href="index.html">Users Portal</a>
+    <nav>
+      <ul class="nav">
+        <li><a class="yfc-link" href="https://yfc-system.onrender.com/login" target="_blank" rel="noopener" data-i18n="common.nav_ict">ICT営業管理</a></li>
+        <li><a href="index.html" data-i18n="common.nav_home">ホーム</a></li>
+        <li><a href="kansou.html" data-i18n="common.nav_kansou">感想掲示板</a></li>
+        <li><a href="shukkin.html" data-i18n="common.nav_shukkin">出勤管理</a></li>
+        <li><a href="wiki/" data-i18n-wiki-link data-i18n="common.nav_wiki">WIKI</a></li>
+        <li><a href="wiki-app.html" data-i18n="common.nav_wiki_live">知识库</a></li>
+        <li><a href="yfc-ai-platform/" data-i18n="common.nav_platform">AI Platform</a></li>
+        <li><a href="bingo.html" data-i18n="common.nav_bingo">ビンゴ</a></li>
+        <li><a href="wheel.html" data-i18n="common.nav_wheel">ルーレット</a></li>
+      </ul>
+    </nav>
+    <div data-lang-switcher></div>
+  </header>
+
+  <main class="page-main">
+    <section class="hero" id="home">
+      <span class="hero-badge">YFC</span>
+      <h1>YFC</h1>
+    </section>
+
+    <div class="game-grid">
+      <a class="game-card kansou" href="kansou.html">
+        <div class="game-icon" aria-hidden="true">💬</div>
+        <h2 data-i18n="index.card_kansou_t">感想掲示板</h2>
+        <p data-i18n="index.card_kansou_d">イベントやシステムへのご感想を投稿</p>
+      </a>
+      <a class="game-card shukkin" href="shukkin.html">
+        <div class="game-icon" aria-hidden="true">🕐</div>
+        <h2 data-i18n="index.card_shukkin_t">出勤管理</h2>
+        <p data-i18n="index.card_shukkin_d">出勤・退勤の打刻と勤怠記録の確認</p>
+      </a>
+      <a class="game-card yfc yfc-link" href="https://yfc-system.onrender.com/login" target="_blank" rel="noopener">
+        <div class="game-icon" aria-hidden="true">📊</div>
+        <h2 data-i18n="index.card_ict_t">ICT営業管理</h2>
+        <p data-i18n="index.card_ict_d">請求CSV取込・経営Dashboard・部門評価</p>
+      </a>
+      <a class="game-card wiki" href="wiki/" data-i18n-wiki-link>
+        <div class="game-icon" aria-hidden="true">📖</div>
+        <h2 data-i18n="index.card_wiki_t">WIKI</h2>
+        <p data-i18n="index.card_wiki_d">YFC AI Knowledge Platform 設計書 V1.1</p>
+      </a>
+      <a class="game-card wikiapp" href="wiki-app.html">
+        <div class="game-icon" aria-hidden="true">📝</div>
+        <h2 data-i18n="index.card_wikiapp_t">知识库 Live</h2>
+        <p data-i18n="index.card_wikiapp_d">连接 Render Wiki API，浏览与发布知识帖</p>
+      </a>
+      <a class="game-card platform" href="yfc-ai-platform/">
+        <div class="game-icon" aria-hidden="true">🤖</div>
+        <h2 data-i18n="index.card_platform_t">AI Platform</h2>
+        <p data-i18n="index.card_platform_d">Wiki API・積分サービス・RAG基盤（Render 部署）</p>
+      </a>
+      <a class="game-card bingo" href="bingo.html">
+        <div class="game-icon" aria-hidden="true">🎱</div>
+        <h2 data-i18n="index.card_bingo_t">ビンゴ</h2>
+        <p data-i18n="index.card_bingo_d">团建・パーティー向けビンゴ司会ページ</p>
+      </a>
+      <a class="game-card wheel" href="wheel.html">
+        <div class="game-icon" aria-hidden="true">🎡</div>
+        <h2 data-i18n="index.card_wheel_t">ルーレット抽選</h2>
+        <p data-i18n="index.card_wheel_d">ラッキールーレットを回して賞品をゲット</p>
+      </a>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <p data-i18n="common.footer">&copy; 2026 Anonymoususers Portal</p>
+  </footer>
+
+  <script src="portal-i18n.js"></script>
+  <script>
+    (function () {
+      const yfcUrl = "https://yfc-system.onrender.com/login";
+      document.querySelectorAll(".yfc-link").forEach(function (el) { el.href = yfcUrl; });
+    })();
+
+    const bgA = document.getElementById("bg-a");
+    const bgB = document.getElementById("bg-b");
+    if (bgA && bgB) {
+      const BG_THEMES = [
+        "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
+        "linear-gradient(135deg, #2c0a0a 0%, #5c1a1a 50%, #8b2020 100%)",
+        "linear-gradient(135deg, #3d3200 0%, #6b5a00 50%, #9a8200 100%)",
+        "linear-gradient(135deg, #0a1a3d 0%, #123a7a 50%, #1a5299 100%)",
+        "linear-gradient(135deg, #0a2e1a 0%, #145c32 50%, #1e8449 100%)",
+        "linear-gradient(135deg, #2a0a3d 0%, #4a1575 50%, #6a1fa8 100%)",
+      ];
+      let bgIndex = 0;
+      let useA = true;
+      bgA.style.background = BG_THEMES[0];
+      setInterval(() => {
+        bgIndex = (bgIndex + 1) % BG_THEMES.length;
+        const next = useA ? bgB : bgA;
+        const current = useA ? bgA : bgB;
+        next.style.background = BG_THEMES[bgIndex];
+        next.classList.add("visible");
+        current.classList.remove("visible");
+        useA = !useA;
+      }, 10000);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "@yfc/point-service",
+  "version": "0.1.0",
+  "description": "YFC AI Knowledge Platform — Point Service (独自IP)",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "pg": "^8.12.0"
+  },
+  "engines": { "node": ">=20" }
+}

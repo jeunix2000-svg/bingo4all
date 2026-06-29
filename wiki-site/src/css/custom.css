@@ -1,0 +1,314 @@
+/**
+ * Enterprise Wiki — Docusaurus theme
+ * Dark: gold accent | Light: high-contrast blue/navy (readable on white)
+ */
+
+:root,
+[data-theme='dark'] {
+  --wiki-accent: #ffd700;
+  --wiki-accent-strong: #ffe066;
+  --wiki-heading: #ffffff;
+  --wiki-muted: rgba(255, 255, 255, 0.65);
+  --wiki-card-bg: rgba(255, 255, 255, 0.04);
+  --wiki-card-border: rgba(255, 255, 255, 0.08);
+  --wiki-hero-bg: #0f1419;
+}
+
+[data-theme='light'] {
+  --ifm-color-primary: #1565c0;
+  --ifm-color-primary-dark: #0d47a1;
+  --ifm-color-primary-darker: #0a3d91;
+  --ifm-color-primary-darkest: #062a63;
+  --ifm-color-primary-light: #1976d2;
+  --ifm-color-primary-lighter: #42a5f5;
+  --ifm-color-primary-lightest: #e3f2fd;
+  --ifm-background-color: #f8f9fb;
+  --ifm-background-surface-color: #ffffff;
+  --ifm-font-color-base: #1a2332;
+  --ifm-heading-color: #0d1b2a;
+  --ifm-menu-color: #3d4f63;
+  --ifm-toc-link-color: #4a5d73;
+  --ifm-navbar-link-hover-color: #1565c0;
+  --docusaurus-highlighted-code-line-bg: rgba(21, 101, 192, 0.1);
+  --wiki-accent: #1565c0;
+  --wiki-accent-strong: #0d47a1;
+  --wiki-heading: #0d1b2a;
+  --wiki-muted: #5a6474;
+  --wiki-card-bg: #ffffff;
+  --wiki-card-border: rgba(13, 27, 42, 0.12);
+  --wiki-hero-bg: #eef2f7;
+}
+
+:root {
+  --ifm-code-font-size: 95%;
+  --ifm-font-family-base: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #ffd700;
+  --ifm-color-primary-dark: #e6c200;
+  --ifm-color-primary-darker: #d9b700;
+  --ifm-color-primary-darkest: #b39600;
+  --ifm-color-primary-light: #ffdf33;
+  --ifm-color-primary-lighter: #ffe44d;
+  --ifm-color-primary-lightest: #ffec80;
+  --ifm-background-color: #0f1419;
+  --ifm-background-surface-color: #151b22;
+  --ifm-navbar-background-color: rgba(15, 20, 25, 0.92);
+  --ifm-footer-background-color: #0a0e13;
+  --ifm-heading-color: #ffffff;
+  --ifm-font-color-base: rgba(255, 255, 255, 0.88);
+  --ifm-menu-color: rgba(255, 255, 255, 0.75);
+  --ifm-toc-link-color: rgba(255, 255, 255, 0.65);
+  --docusaurus-highlighted-code-line-bg: rgba(255, 215, 0, 0.15);
+}
+
+.hero--primary {
+  --ifm-hero-text-color: var(--wiki-heading);
+  background:
+    radial-gradient(circle at 15% 20%, rgba(21, 101, 192, 0.08) 0%, transparent 45%),
+    radial-gradient(circle at 85% 80%, rgba(78, 205, 196, 0.06) 0%, transparent 45%),
+    var(--wiki-hero-bg);
+}
+
+[data-theme='dark'] .hero--primary {
+  background:
+    radial-gradient(circle at 15% 20%, rgba(255, 215, 0, 0.08) 0%, transparent 45%),
+    radial-gradient(circle at 85% 80%, rgba(78, 205, 196, 0.06) 0%, transparent 45%),
+    #0f1419;
+}
+
+.hero__title {
+  font-size: 3rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--wiki-heading);
+}
+
+[data-theme='dark'] .hero__title {
+  background: linear-gradient(135deg, #fff 30%, #ffd700 70%, #4ecdc4);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero__subtitle {
+  font-size: 1.15rem;
+  color: var(--wiki-muted);
+}
+
+.button--secondary {
+  --ifm-button-background-color: rgba(255, 255, 255, 0.08);
+  --ifm-button-border-color: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+[data-theme='light'] .button--secondary {
+  --ifm-button-background-color: #ffffff;
+  --ifm-button-border-color: rgba(13, 27, 42, 0.2);
+  color: #0d1b2a;
+}
+
+.features {
+  padding: 3rem 0;
+  background: var(--wiki-card-bg);
+}
+
+[data-theme='dark'] .features {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.featureCard {
+  padding: 1.5rem;
+  border-radius: 16px;
+  background: var(--wiki-card-bg);
+  border: 1px solid var(--wiki-card-border);
+  height: 100%;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+}
+
+.featureCard h3 {
+  color: var(--wiki-accent-strong);
+  font-size: 1.05rem;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+
+.featureCard p {
+  color: var(--wiki-muted);
+  font-size: 0.9rem;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.navbar__title {
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.menu__link--active,
+.table-of-contents__link--active {
+  color: var(--wiki-accent-strong) !important;
+  font-weight: 700;
+}
+
+.markdown h1 {
+  color: var(--wiki-heading);
+  font-weight: 800;
+}
+
+[data-theme='dark'] .markdown h1 {
+  background: linear-gradient(135deg, #fff 20%, #ffd700 80%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.markdown h2 {
+  color: var(--wiki-heading);
+  border-bottom: 2px solid var(--wiki-accent);
+  padding-bottom: 0.35rem;
+}
+
+[data-theme='light'] .markdown h3 {
+  color: #0d47a1;
+}
+
+[data-theme='light'] .markdown a {
+  color: #1565c0;
+}
+
+[data-theme='light'] .markdown a:hover {
+  color: #0d47a1;
+}
+
+[data-theme='light'] .menu__link--active,
+[data-theme='light'] .table-of-contents__link--active {
+  color: #0d47a1 !important;
+}
+
+[data-theme='light'] .navbar__link--active,
+[data-theme='light'] .navbar__link:hover {
+  color: #1565c0;
+}
+
+[data-theme='light'] .featureCard h3 {
+  color: #0d47a1;
+}
+
+[data-theme='light'] .pagination-nav__link {
+  color: #1565c0;
+  border-color: rgba(13, 27, 42, 0.15);
+}
+
+[data-theme='light'] .breadcrumbs__link {
+  color: #4a5d73;
+}
+
+[data-theme='light'] .breadcrumbs__item--active .breadcrumbs__link {
+  color: #0d1b2a;
+}
+
+[data-theme='light'] .admonition {
+  color: #1a2332;
+}
+
+[data-theme='light'] .theme-doc-markdown {
+  color: #1a2332;
+}
+
+.markdown h3 {
+  color: var(--wiki-accent-strong);
+}
+
+.markdown a {
+  color: var(--wiki-accent-strong);
+  font-weight: 600;
+}
+
+.markdown table th {
+  background: rgba(21, 101, 192, 0.08);
+  color: var(--wiki-heading);
+}
+
+[data-theme='dark'] .markdown table th {
+  background: rgba(255, 215, 0, 0.12);
+}
+
+.admonition-heading h5 {
+  color: var(--wiki-heading);
+}
+
+.portal-back-btn {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.45rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #1a1a2e !important;
+  background: linear-gradient(135deg, #ffd700, #ffb347);
+  border: none;
+  border-radius: 50px;
+  text-decoration: none !important;
+  box-shadow: 0 4px 18px rgba(255, 215, 0, 0.35);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.portal-back-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 22px rgba(255, 215, 0, 0.5);
+  color: #1a1a2e !important;
+}
+
+.theme-layout-navbar.navbar {
+  padding-left: 0;
+}
+
+.navbar__inner {
+  padding-left: 10.5rem;
+}
+
+@media (max-width: 996px) {
+  .navbar__inner {
+    padding-left: var(--ifm-navbar-padding-horizontal);
+  }
+
+  /*
+   * Docusaurus hides locale dropdown + color mode toggle in the top navbar on
+   * mobile (they only appear inside the hamburger drawer). Keep them visible
+   * in the navbar bar so users can switch theme/language without opening the menu.
+   */
+  .navbar .navbar__items--right > .navbar__item.dropdown,
+  .navbar .navbar__items--right > [class*='colorModeToggle'] {
+    display: inline-flex !important;
+    align-items: center;
+  }
+
+  .navbar .navbar__items--right > .navbar__item.dropdown .navbar__link {
+    padding-left: 0.4rem;
+    padding-right: 0.4rem;
+  }
+
+  .navbar__title {
+    max-width: 7rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Avoid covering the hamburger menu (top-left) */
+  .portal-back-btn {
+    top: auto;
+    bottom: 1rem;
+    left: 0.75rem;
+    padding: 0.4rem 0.85rem;
+    font-size: 0.78rem;
+    z-index: 200;
+  }
+}
