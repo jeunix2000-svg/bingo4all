@@ -47,13 +47,18 @@
       bottom: auto;
       z-index: 1;
       margin-top: 0.85rem;
-      padding: 0.55rem 0.65rem 0.5rem;
+      padding: 0.55rem 0.65rem;
       background: rgba(15, 20, 25, 0.94);
       border: 1px solid rgba(255, 215, 0, 0.28);
       border-radius: 12px;
       box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
-      text-align: center;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 0.7rem;
+      text-align: left;
       flex-shrink: 0;
+      max-width: 100%;
     }
 
     .host-qr-panel[hidden] {
@@ -65,7 +70,8 @@
     }
 
     .host-qr-code {
-      display: inline-block;
+      display: block;
+      flex-shrink: 0;
       cursor: pointer;
       touch-action: none;
       -webkit-user-select: none;
@@ -87,16 +93,26 @@
       border-radius: 8px;
     }
 
+    .host-qr-copy {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 0.2rem;
+      min-width: 0;
+      flex: 1;
+    }
+
     .host-qr-label {
-      margin: 0.4rem 0 0;
+      margin: 0;
       font-size: 0.72rem;
       font-weight: 600;
       letter-spacing: 0.06em;
       color: rgba(255, 215, 0, 0.85);
+      line-height: 1.35;
     }
 
     .host-qr-hint {
-      margin: 0.2rem 0 0;
+      margin: 0;
       font-size: 0.62rem;
       color: rgba(255, 255, 255, 0.42);
       line-height: 1.35;
@@ -1099,9 +1115,11 @@
       <p class="hint host-controls" data-i18n="bingo.draw_hint">Space キーでも抽選</p>
       <button class="btn-link host-controls" id="toggle-card-btn" type="button" data-i18n="bingo.card_btn">デジタルカード</button>
       <div id="host-qr-panel" class="host-qr-panel host-controls" hidden>
+        <div class="host-qr-copy">
+          <p class="host-qr-label" data-i18n="bingo.qr_label">スキャンして観戦</p>
+          <p class="host-qr-hint" data-i18n="bingo.qr_hint">長押しでQRコードを保存</p>
+        </div>
         <div id="host-qr-code" class="host-qr-code" role="button" tabindex="0" aria-label="観戦用QRコード。長押しで保存"></div>
-        <p class="host-qr-label" data-i18n="bingo.qr_label">スキャンして観戦</p>
-        <p class="host-qr-hint" data-i18n="bingo.qr_hint">長押しでQRコードを保存</p>
       </div>
     </aside>
 
