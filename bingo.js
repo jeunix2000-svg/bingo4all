@@ -314,6 +314,12 @@
     return !!(game?.isDemo || game?.id === DEMO_GAME_ID);
   }
 
+  function displayGameName(game) {
+    if (isDemoGame(game)) return tr("bingo.demo_game_name");
+    const id = game?.id ?? currentGameId;
+    return game?.name || formatGameName(Number(id));
+  }
+
   function formatDemoCountdown(totalSec) {
     const sec = Math.max(0, totalSec);
     if (sec >= 60) {
@@ -824,7 +830,7 @@
     if (!gameBarName || !currentGameId) return;
     const games = loadAllGames();
     const game = games[currentGameId];
-    const name = game?.name || formatGameName(Number(currentGameId));
+    const name = displayGameName(game);
     gameBarName.textContent = name;
     if (gameBarMeta) {
       gameBarMeta.textContent = tr("bingo.game_bar_meta", { called: called.length, pool: pool.length });
@@ -1139,7 +1145,7 @@
         : tr("bingo.game_meta", { host: escapeHtml(game.hostLabel || getHostLabel()), called: game.called.length, pool: game.pool.length, min: remainMin });
       li.innerHTML = `
         <div>
-          <div class="game-name">${escapeHtml(game.name)}${demo ? ' <span class="demo-badge">DEMO</span>' : ""}</div>
+          <div class="game-name">${escapeHtml(displayGameName(game))}${demo ? ` <span class="demo-badge">${escapeHtml(tr("bingo.demo_badge"))}</span>` : ""}</div>
           <div class="game-meta">${meta}</div>
         </div>
         <div class="game-list-actions">
@@ -1186,7 +1192,7 @@
     pendingResumeSession = session;
     if (lobbyEl) lobbyEl.classList.add("hidden");
     if (gameWrapEl) gameWrapEl.classList.remove("active");
-    if (resumeGameName) resumeGameName.textContent = game.name;
+    if (resumeGameName) resumeGameName.textContent = displayGameName(game);
     if (resumeModalMeta) {
       resumeModalMeta.textContent = tr("bingo.resume_meta", { called: game.called.length, pool: game.pool.length });
     }
