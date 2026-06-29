@@ -546,9 +546,23 @@
     if (remain <= 0) hideInactivityModal();
   }
 
+  function syncInactivityFinale(game) {
+    if (!currentGameId || !game?.inactivityEndsAt || !isGameActive(game)) {
+      window.stopInactivityFinale?.();
+      return;
+    }
+    const remain = Math.max(0, Math.ceil((Number(game.inactivityEndsAt) - Date.now()) / 1000));
+    if (remain <= 15 && remain > 0) {
+      window.updateInactivityFinale?.(remain);
+    } else {
+      window.stopInactivityFinale?.();
+    }
+  }
+
   async function continueFromInactivity() {
     if (currentMode !== "host" || !currentGameId) return;
     hideInactivityModal();
+    window.stopInactivityFinale?.();
     await pushHostGameState({ hostLastActiveAt: Date.now(), inactivityEndsAt: null });
   }
 
@@ -558,8 +572,10 @@
     const game = games[currentGameId];
     if (!game) return;
     updateInactivityModal(game);
+    syncInactivityFinale(game);
     if (game.endReason === "inactivity" && !isGameActive(game)) {
       hideInactivityModal();
+      window.stopInactivityFinale?.();
       handleGameEnded(currentGameId, tr("bingo.notice_inactivity"));
     }
   }
@@ -576,6 +592,7 @@
       hostInactivityTimer = null;
     }
     hideInactivityModal();
+    window.stopInactivityFinale?.();
   }
 
   function refreshUIAfterSync() {
@@ -1398,6 +1415,7 @@
 
   function handleGameEnded(gameId, message) {
     if (currentGameId !== gameId) return;
+    window.stopInactivityFinale?.();
     stopSpectatorPoll();
     clearSession();
     currentGameId = null;
@@ -1608,6 +1626,8 @@
 
     const games = loadAllGames();
     const game = games[currentGameId];
+    syncInactivityFinale(game);
+
     if (!game || isGameAborted(game)) {
       handleGameAborted(currentGameId);
       return;
