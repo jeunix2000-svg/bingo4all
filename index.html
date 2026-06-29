@@ -659,14 +659,14 @@
     }
 
     .spectator-card-controls {
-      display: none;
+      display: flex;
       flex-direction: column;
       gap: 0.5rem;
       margin-bottom: 0.65rem;
     }
 
-    body.spectator-mode .spectator-card-controls {
-      display: flex;
+    .spectator-card-controls[hidden] {
+      display: none !important;
     }
 
     .bingo-claim-btn {

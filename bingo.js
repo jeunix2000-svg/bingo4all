@@ -46,6 +46,7 @@
   const claimCardBtn = document.getElementById("claim-card-btn");
   const viewCardBtn = document.getElementById("view-card-btn");
   const claimBingoBtn = document.getElementById("claim-bingo-btn");
+  const spectatorCardControls = document.getElementById("spectator-card-controls");
   const winnerBanner = document.getElementById("winner-banner");
   const winnerBannerText = document.getElementById("winner-banner-text");
   const confirmWinnerBtn = document.getElementById("confirm-winner-btn");
@@ -996,8 +997,26 @@
     }
   }
 
+  function canParticipateDigitalCards() {
+    const game = currentGameId ? loadAllGames()[currentGameId] : null;
+    if (!game || isDemoGame(game)) return false;
+    if (!digitalCardsEnabled) return false;
+    return currentMode === "spectator" || currentMode === "host";
+  }
+
+  function loadMyDigitalCard() {
+    const mine = spectatorCards[getClientId()];
+    if (digitalCardsEnabled && mine?.playerCard?.length) {
+      playerCard = mine.playerCard;
+      playerMarked = mine.playerMarked?.length ? mine.playerMarked : buildPlayerCard().playerMarked;
+    } else {
+      playerCard = [];
+      playerMarked = [];
+    }
+  }
+
   async function claimSpectatorCard() {
-    if (currentMode !== "spectator" || !digitalCardsEnabled || hasMySpectatorCard()) return;
+    if (!canParticipateDigitalCards() || hasMySpectatorCard()) return;
     const built = buildPlayerCard();
     playerCard = built.playerCard;
     playerMarked = built.playerMarked;
@@ -1019,7 +1038,7 @@
   }
 
   async function claimSpectatorBingo() {
-    if (currentMode !== "spectator" || !digitalCardsEnabled || !hasMySpectatorCard()) return;
+    if (!canParticipateDigitalCards() || !hasMySpectatorCard()) return;
     if (!checkCardBingo(playerCard, called)) return;
     const result = await postSpectatorAction("claimBingo", { hasBingo: true });
     if (!result.ok) {
@@ -1066,9 +1085,10 @@
   }
 
   function updateDigitalCardUI() {
-    const game = currentGameId ? loadAllGames()[currentGameId] : null;
-    const spectator = currentMode === "spectator" && game && !isDemoGame(game);
-    const enabled = spectator && digitalCardsEnabled;
+    const enabled = canParticipateDigitalCards();
+    document.body.classList.toggle("host-digital-cards", currentMode === "host" && !!digitalCardsEnabled);
+
+    if (spectatorCardControls) spectatorCardControls.hidden = !enabled;
 
     if (claimCardBtn) claimCardBtn.hidden = !enabled || hasMySpectatorCard() || !!pendingWinner;
     if (viewCardBtn) viewCardBtn.hidden = !enabled || !hasMySpectatorCard();
@@ -1096,11 +1116,11 @@
       winnerBannerText.classList.toggle("is-self", isSelf);
       if (!hasPending) {
         winnerBannerText.textContent = "";
-      } else if (currentMode === "host") {
-        winnerBannerText.textContent = tr("bingo.winner_host_msg", { name: pendingWinner.deviceLabel });
       } else if (isSelf) {
         winnerBannerText.textContent = tr("bingo.winner_self_msg");
         showWinnerCelebrationOnce(pendingWinner);
+      } else if (currentMode === "host") {
+        winnerBannerText.textContent = tr("bingo.winner_host_msg", { name: pendingWinner.deviceLabel });
       } else {
         winnerBannerText.textContent = tr("bingo.winner_other_msg", { name: pendingWinner.deviceLabel });
       }
@@ -1197,15 +1217,8 @@
     spectatorCards = g.spectatorCards || {};
     pendingWinner = g.pendingWinner || null;
     confirmedWinners = g.confirmedWinners || [];
-    if (currentMode === "spectator") {
-      const mine = spectatorCards[getClientId()];
-      if (mine?.playerCard?.length) {
-        playerCard = mine.playerCard;
-        playerMarked = mine.playerMarked?.length ? mine.playerMarked : buildPlayerCard().playerMarked;
-      } else {
-        playerCard = [];
-        playerMarked = [];
-      }
+    if (currentMode === "spectator" || currentMode === "host") {
+      loadMyDigitalCard();
     } else {
       playerCard = [];
       playerMarked = [];
@@ -1225,7 +1238,7 @@
     renderMasterBoard();
     renderCalledList();
     updateStats();
-    if (currentMode === "spectator" && hasMySpectatorCard()) {
+    if (canParticipateDigitalCards() && hasMySpectatorCard()) {
       renderPlayerCard();
     } else if (playerCardEl) {
       playerCardEl.innerHTML = "";

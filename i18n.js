@@ -91,7 +91,7 @@
     "bingo.inactivity_continue": { ja: "ゲームを続ける", zh: "继续游戏", en: "Continue Game" },
     "bingo.notice_inactivity": { ja: "司会者の無操作によりゲームが終了しました。", zh: "因主持者长时间未操作，游戏已结束。", en: "Game ended due to host inactivity." },
     "bingo.enable_digital_cards": { ja: "デジタルカードを有効にする", zh: "启用数字卡", en: "Enable digital cards" },
-    "bingo.physical_card_mode": { ja: "現在は紙のビンゴカードでプレイ中", zh: "当前使用实体纸片卡", en: "Using physical paper cards" },
+    "bingo.physical_card_mode": { ja: "紙のカードモード — 司会のみ（参加不可）", zh: "实体纸片卡模式 — 主持仅司会，不参与游戏", en: "Physical cards — host only, no digital play" },
     "bingo.claim_card": { ja: "デジタルカードを受け取る", zh: "领取数字卡", en: "Claim Digital Card" },
     "bingo.view_card": { ja: "デジタルカードを見る", zh: "查看数字卡", en: "View Digital Card" },
     "bingo.claim_bingo": { ja: "ビンゴ！", zh: "宾果！", en: "BINGO!" },
