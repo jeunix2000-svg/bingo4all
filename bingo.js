@@ -1221,6 +1221,23 @@
     }
   }
 
+  function formatGameListMeta(game) {
+    const host = escapeHtml(game.hostLabel || getHostLabel());
+    const called = game.called.length;
+    const poolLeft = game.pool.length;
+    const now = Date.now();
+    const lastActive = Number(game.hostLastActiveAt || game.updatedAt || game.createdAt || 0);
+
+    if (game.inactivityEndsAt && now < Number(game.inactivityEndsAt)) {
+      const sec = Math.max(0, Math.ceil((Number(game.inactivityEndsAt) - now) / 1000));
+      return tr("bingo.game_meta_warning", { host, called, pool: poolLeft, sec });
+    }
+
+    const untilEndMs = Math.max(0, lastActive + HOST_INACTIVITY_IDLE_MS + HOST_INACTIVITY_GRACE_MS - now);
+    const min = Math.max(1, Math.ceil(untilEndMs / 60000));
+    return tr("bingo.game_meta", { host, called, pool: poolLeft, min });
+  }
+
   function renderGameList(activeGames) {
     if (!gameListEl) return;
     gameListEl.innerHTML = "";
@@ -1235,13 +1252,9 @@
       const demo = isDemoGame(game);
       li.className = demo ? "game-list-item demo-game" : "game-list-item";
       const isOwner = !demo && game.hostClientId === getClientId();
-      const remainMs = demo
-        ? 0
-        : Math.max(0, MAX_GAME_DURATION_MS - (Date.now() - Number(game.createdAt || 0)));
-      const remainMin = Math.ceil(remainMs / 60000);
       const meta = demo
         ? tr("bingo.game_meta_demo", { host: escapeHtml(game.hostLabel || "Portal Server"), called: game.called.length, pool: game.pool.length })
-        : tr("bingo.game_meta", { host: escapeHtml(game.hostLabel || getHostLabel()), called: game.called.length, pool: game.pool.length, min: remainMin });
+        : formatGameListMeta(game);
       li.innerHTML = `
         <div>
           <div class="game-name">${escapeHtml(displayGameName(game))}${demo ? ` <span class="demo-badge">${escapeHtml(tr("bingo.demo_badge"))}</span>` : ""}</div>
