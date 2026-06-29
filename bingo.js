@@ -870,9 +870,13 @@
   }
 
   function setDrawBtnEnabled(enabled) {
-    if (!drawBtn) return;
-    drawBtn.disabled = !enabled;
-    drawBtn.classList.toggle("is-ready", enabled);
+    if (drawBtn) {
+      drawBtn.disabled = !enabled;
+      drawBtn.classList.toggle("is-ready", enabled);
+    }
+    if (ballEl) {
+      ballEl.classList.toggle("is-draw-ready", currentMode === "host" && (!!pool.length || drawing));
+    }
   }
 
   function getMeta(num) {
@@ -1863,6 +1867,10 @@
 
   drawBtn?.classList.add("is-ready");
   drawBtn?.addEventListener("click", triggerDraw);
+  ballEl?.addEventListener("click", () => {
+    if (currentMode !== "host") return;
+    triggerDraw();
+  });
   resetBtn?.addEventListener("click", () => {
     if (currentMode !== "host") return;
     if (called.length && !confirm(tr("bingo.confirm_reset"))) return;

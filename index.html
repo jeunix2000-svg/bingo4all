@@ -251,7 +251,24 @@
       background: rgba(0, 0, 0, 0.4);
       border: 5px solid rgba(255, 215, 0, 0.7);
       box-shadow: 0 0 40px rgba(255, 215, 0, 0.3);
-      transition: border-color 0.15s, box-shadow 0.15s;
+      transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+    }
+
+    body:not(.spectator-mode) #current-ball.is-draw-ready {
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    body:not(.spectator-mode) #current-ball.is-draw-ready:hover {
+      border-color: rgba(255, 215, 0, 0.95);
+      box-shadow: 0 0 52px rgba(255, 215, 0, 0.48);
+      transform: scale(1.02);
+    }
+
+    body:not(.spectator-mode) #current-ball.is-draw-ready:active {
+      transform: scale(0.98);
     }
 
     #current-ball.spinning {

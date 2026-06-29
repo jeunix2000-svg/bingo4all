@@ -28,7 +28,7 @@
     "bingo.called_label": { ja: "出た数字", zh: "已出", en: "Called" },
     "bingo.draw_btn": { ja: "数字を引く", zh: "抽取数字", en: "Draw Number" },
     "bingo.reset_btn": { ja: "リセット", zh: "重置", en: "Reset" },
-    "bingo.draw_hint": { ja: "Space キーでも抽選", zh: "也可按空格键抽号", en: "Space key also draws" },
+    "bingo.draw_hint": { ja: "Space キー・大きな球クリックでも抽選", zh: "也可按空格键或点击大球抽号", en: "Space key or click the big ball to draw" },
     "bingo.card_btn": { ja: "デジタルカード", zh: "数字卡", en: "Digital Card" },
     "bingo.master_h2": { ja: "マスターボード — 出た数字は色付きで表示", zh: "主盘 — 已出数字高亮显示", en: "Master board — called numbers highlighted" },
     "bingo.card_modal_h2": { ja: "デジタルビンゴカード", zh: "数字宾果卡", en: "Digital Bingo Card" },
