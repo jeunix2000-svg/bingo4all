@@ -633,10 +633,8 @@
       }
       .master-col-grid { grid-template-rows: repeat(15, minmax(22px, 1fr)); }
       .lobby-card { padding: 1.85rem 1.25rem 1.75rem; }
-      .lobby-cradle-string { height: 0.85rem; }
       .lobby-cradle-arm .lobby-letter { width: 2rem; height: 2rem; font-size: 1rem; }
-      .lobby-bingo-letters { margin-bottom: 0.65rem; height: 3.5rem; }
-      .lobby-cradle-bar { width: calc(5 * 2rem - 4px); }
+      .lobby-bingo-letters { gap: 0.35rem; margin-bottom: 0.65rem; }
       .lobby-orb-1 { width: 2.2rem; height: 2.2rem; font-size: 0.62rem; }
       .lobby-orb-2 { width: 1.85rem; height: 1.85rem; font-size: 0.55rem; }
       .lobby-orb-3 { display: none; }
@@ -740,29 +738,10 @@
       position: relative;
       display: flex;
       justify-content: center;
-      align-items: flex-start;
-      gap: 0;
+      align-items: flex-end;
+      gap: 0.45rem;
       margin-bottom: 0.85rem;
-      padding-top: 0.35rem;
-      height: 4.35rem;
-    }
-
-    .lobby-cradle-bar {
-      position: absolute;
-      top: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      width: calc(5 * 2.35rem - 6px);
-      height: 4px;
-      background: linear-gradient(
-        90deg,
-        rgba(255, 255, 255, 0.08),
-        rgba(255, 215, 0, 0.55) 20%,
-        rgba(255, 215, 0, 0.55) 80%,
-        rgba(255, 255, 255, 0.08)
-      );
-      border-radius: 4px;
-      box-shadow: 0 1px 8px rgba(255, 215, 0, 0.2);
+      min-height: 2.35rem;
     }
 
     .lobby-cradle-unit {
@@ -770,36 +749,25 @@
       flex-direction: column;
       align-items: center;
       flex-shrink: 0;
-      z-index: 1;
-    }
-
-    .lobby-cradle-unit + .lobby-cradle-unit {
-      margin-left: -3px;
-    }
-
-    .lobby-cradle-string {
-      width: 2px;
-      height: 1.1rem;
-      background: linear-gradient(180deg, rgba(255, 215, 0, 0.65), rgba(255, 255, 255, 0.25));
-      border-radius: 1px;
-      flex-shrink: 0;
+      padding-top: 1.1rem;
     }
 
     .lobby-cradle-arm {
       transform-origin: top center;
+      margin-top: -1.1rem;
       will-change: transform;
     }
 
     .lobby-cradle-arm-end-left {
-      animation: cradle-swing-left 3.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+      animation: cradle-swing-left 4s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
     }
 
     .lobby-cradle-arm-end-right {
-      animation: cradle-swing-right 3.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+      animation: cradle-swing-right 4s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
     }
 
     .lobby-cradle-arm-middle {
-      animation: cradle-middle-nudge 3.2s ease-out infinite;
+      animation: cradle-middle-nudge 4s ease-out infinite;
     }
 
     @keyframes cradle-swing-left {
@@ -1360,33 +1328,27 @@
           <span class="lobby-orb lobby-orb-3">O71</span>
         </div>
         <div class="lobby-bingo-letters" aria-hidden="true">
-          <span class="lobby-cradle-bar"></span>
           <div class="lobby-cradle-unit">
-            <span class="lobby-cradle-string"></span>
             <span class="lobby-cradle-arm lobby-cradle-arm-end-left">
               <span class="lobby-letter lobby-letter-b">B</span>
             </span>
           </div>
           <div class="lobby-cradle-unit">
-            <span class="lobby-cradle-string"></span>
             <span class="lobby-cradle-arm lobby-cradle-arm-middle">
               <span class="lobby-letter lobby-letter-i">I</span>
             </span>
           </div>
           <div class="lobby-cradle-unit">
-            <span class="lobby-cradle-string"></span>
             <span class="lobby-cradle-arm lobby-cradle-arm-middle">
               <span class="lobby-letter lobby-letter-n">N</span>
             </span>
           </div>
           <div class="lobby-cradle-unit">
-            <span class="lobby-cradle-string"></span>
             <span class="lobby-cradle-arm lobby-cradle-arm-middle">
               <span class="lobby-letter lobby-letter-g">G</span>
             </span>
           </div>
           <div class="lobby-cradle-unit">
-            <span class="lobby-cradle-string"></span>
             <span class="lobby-cradle-arm lobby-cradle-arm-end-right">
               <span class="lobby-letter lobby-letter-o">O</span>
             </span>
