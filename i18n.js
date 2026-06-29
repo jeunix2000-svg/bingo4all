@@ -81,6 +81,8 @@
     "bingo.status_bingo": { ja: "全ての数字が出ました — ビンゴ！{combo}", zh: "所有数字已出 — 宾果！{combo}", en: "All called — BINGO!{combo}" },
     "bingo.status_combo": { ja: "残り {n} 個の数字 — {combo} COMBO!", zh: "剩余 {n} 个数字 — {combo} 连击!", en: "{n} left — {combo} COMBO!" },
     "bingo.demo_sec": { ja: "{n}秒", zh: "{n}秒", en: "{n}s" },
+    "bingo.demo_game_name": { ja: "デモ観戦（サーバー常時稼働）", zh: "演示观战（服务器 24/7 运行）", en: "Demo Spectator (Server 24/7)" },
+    "bingo.demo_badge": { ja: "デモ", zh: "演示", en: "DEMO" },
   };
 
   function getLang() {
