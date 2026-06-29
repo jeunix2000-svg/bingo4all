@@ -15,9 +15,11 @@
   const SESSION_KEY = "portal_bingo_session";
   const CLIENT_ID_KEY = "portal_bingo_client_id";
   const LEGACY_KEY = "lucky-portal:bingo";
-  const MAX_ACTIVE_GAMES = 10;
+  const MAX_ACTIVE_GAMES = 20;
   const DEMO_GAME_ID = "server-demo-bingo";
   const MAX_GAME_DURATION_MS = 5 * 60 * 60 * 1000;
+  const HOST_INACTIVITY_IDLE_MS = 3 * 60 * 1000;
+  const HOST_INACTIVITY_GRACE_MS = 60 * 1000;
   const HOST_QR_SIZE = 216;
   const HOST_QR_LONG_PRESS_MS = 600;
   const CFG = window.BINGO4ALL_CONFIG || {};
@@ -68,6 +70,9 @@
   const demoCountdownEl = document.getElementById("demo-countdown");
   const demoCountdownLabel = document.getElementById("demo-countdown-label");
   const demoNewGameBtn = document.getElementById("demo-new-game-btn");
+  const inactivityModal = document.getElementById("inactivity-modal");
+  const inactivityCountdownEl = document.getElementById("inactivity-countdown");
+  const inactivityContinueBtn = document.getElementById("inactivity-continue-btn");
 
   if (!ballEl) return;
 
@@ -76,6 +81,7 @@
   let hostQrLongPressTimer = null;
   let hostQrSaveToastTimer = null;
   let demoCountdownTimer = null;
+  let hostInactivityTimer = null;
 
   let pool = [];
   let called = [];
@@ -378,6 +384,40 @@
     return Date.now() - created >= MAX_GAME_DURATION_MS;
   }
 
+  function applyInactivityTimeouts(games) {
+    let changed = false;
+    const now = Date.now();
+    Object.values(games).forEach((game) => {
+      if (!game || typeof game !== "object") return;
+      if (isDemoGame(game) || isGameAborted(game)) return;
+      if (!isGameActive(game)) return;
+
+      const lastActive = Number(game.hostLastActiveAt || game.updatedAt || game.createdAt || 0);
+
+      if (game.inactivityEndsAt) {
+        if (now >= Number(game.inactivityEndsAt)) {
+          game.status = "finished";
+          game.endReason = "inactivity";
+          game.endedAt = now;
+          game.updatedAt = now;
+          game.pool = [];
+          game.liveDraw = null;
+          game.inactivityEndsAt = null;
+          changed = true;
+          clearSessionIfGame(game.id);
+        }
+        return;
+      }
+
+      if (lastActive && now - lastActive >= HOST_INACTIVITY_IDLE_MS) {
+        game.inactivityEndsAt = now + HOST_INACTIVITY_GRACE_MS;
+        game.updatedAt = now;
+        changed = true;
+      }
+    });
+    return changed;
+  }
+
   function applyGameTimeouts(games) {
     let changed = false;
     Object.values(games).forEach((game) => {
@@ -446,7 +486,9 @@
 
   function loadAllGames() {
     ensureGamesCache();
-    if (applyGameTimeouts(gamesCache)) {
+    let changed = applyInactivityTimeouts(gamesCache);
+    if (applyGameTimeouts(gamesCache)) changed = true;
+    if (changed) {
       try {
         localStorage.setItem(GAMES_KEY, JSON.stringify(gamesCache));
       } catch (_) { /* ignore */ }
@@ -486,11 +528,64 @@
     } catch (_) { /* ignore */ }
   }
 
+  function hideInactivityModal() {
+    inactivityModal?.classList.remove("open");
+  }
+
+  function updateInactivityModal(game) {
+    if (!inactivityModal) return;
+    if (currentMode !== "host" || !game?.inactivityEndsAt || !isGameActive(game)) {
+      hideInactivityModal();
+      return;
+    }
+    const remain = Math.max(0, Math.ceil((Number(game.inactivityEndsAt) - Date.now()) / 1000));
+    if (inactivityCountdownEl) {
+      inactivityCountdownEl.textContent = tr("bingo.inactivity_countdown", { n: remain });
+    }
+    inactivityModal.classList.add("open");
+    if (remain <= 0) hideInactivityModal();
+  }
+
+  async function continueFromInactivity() {
+    if (currentMode !== "host" || !currentGameId) return;
+    hideInactivityModal();
+    await pushHostGameState({ hostLastActiveAt: Date.now(), inactivityEndsAt: null });
+  }
+
+  function checkHostInactivityState() {
+    if (currentMode !== "host" || !currentGameId) return;
+    const games = loadAllGames();
+    const game = games[currentGameId];
+    if (!game) return;
+    updateInactivityModal(game);
+    if (game.endReason === "inactivity" && !isGameActive(game)) {
+      hideInactivityModal();
+      handleGameEnded(currentGameId, tr("bingo.notice_inactivity"));
+    }
+  }
+
+  function startHostInactivityTimer() {
+    stopHostInactivityTimer();
+    checkHostInactivityState();
+    hostInactivityTimer = setInterval(checkHostInactivityState, 1000);
+  }
+
+  function stopHostInactivityTimer() {
+    if (hostInactivityTimer) {
+      clearInterval(hostInactivityTimer);
+      hostInactivityTimer = null;
+    }
+    hideInactivityModal();
+  }
+
   function refreshUIAfterSync() {
     if (currentGameId) checkCurrentGameStillValid();
     if (currentMode === "spectator") void refreshSpectatorView();
     if (lobbyEl && !lobbyEl.classList.contains("hidden")) updateLobbyUI();
     updateHostQrCode();
+    if (currentMode === "host" && currentGameId) {
+      updateInactivityModal(loadAllGames()[currentGameId]);
+    }
   }
 
   async function fetchRemoteGames() {
@@ -628,6 +723,8 @@
       hostClientId: clientId,
       hostLabel: getHostLabel(),
       updatedAt: now,
+      hostLastActiveAt: now,
+      inactivityEndsAt: null,
       pool: fullPool,
       called: [],
       playerCard: card.playerCard,
@@ -774,6 +871,8 @@
       hostClientId: existing.hostClientId || getClientId(),
       hostLabel: existing.hostLabel || getHostLabel(),
       updatedAt: Date.now(),
+      hostLastActiveAt: Date.now(),
+      inactivityEndsAt: null,
       pool: [...pool],
       called: [...called],
       playerCard,
@@ -1228,6 +1327,7 @@
     game.updatedAt = Date.now();
     game.pool = [];
     game.liveDraw = null;
+    game.inactivityEndsAt = null;
     games[gameId] = game;
     void saveAllGames(games);
     clearSessionIfGame(gameId);
@@ -1318,6 +1418,7 @@
   async function showLobby(noticeMessage) {
     stopSpectatorPoll();
     stopDemoCountdownTimer();
+    stopHostInactivityTimer();
     currentGameId = null;
     currentMode = null;
     drawing = false;
@@ -1357,6 +1458,11 @@
     if (game.endReason === "timeout") {
       clearSessionIfGame(gameId);
       showLobby(tr("bingo.notice_timeout"));
+      return;
+    }
+    if (game.endReason === "inactivity" && !isGameActive(game)) {
+      clearSessionIfGame(gameId);
+      showLobby(tr("bingo.notice_inactivity"));
       return;
     }
     if (game.endReason === "host" && !isGameActive(game)) {
@@ -1410,6 +1516,8 @@
     } else {
       stopSpectatorPoll();
       stopDemoCountdownTimer();
+      startHostInactivityTimer();
+      void pushHostGameState({});
     }
     updateHostQrCode();
   }
@@ -1493,6 +1601,10 @@
     }
     if (game.endReason === "timeout" && !isGameActive(game)) {
       handleGameEnded(currentGameId, tr("bingo.notice_timeout"));
+      return;
+    }
+    if (game.endReason === "inactivity" && !isGameActive(game)) {
+      handleGameEnded(currentGameId, tr("bingo.notice_inactivity"));
       return;
     }
     if (game.endReason === "host" && !isGameActive(game)) {
@@ -1612,7 +1724,6 @@
 
   function checkCurrentGameStillValid() {
     if (!currentGameId) return;
-    applyGameTimeouts(loadAllGames());
     const game = loadAllGames()[currentGameId];
     if (!game || isGameAborted(game)) {
       handleGameAborted(currentGameId);
@@ -1622,10 +1733,16 @@
       handleGameEnded(currentGameId, tr("bingo.notice_timeout"));
       return;
     }
+    if (game.endReason === "inactivity" && !isGameActive(game)) {
+      handleGameEnded(currentGameId, tr("bingo.notice_inactivity"));
+      return;
+    }
     if (game.endReason === "host" && !isGameActive(game)) {
       handleGameEnded(currentGameId, tr("bingo.notice_host_ended"));
     }
   }
+
+  inactivityContinueBtn?.addEventListener("click", () => { void continueFromInactivity(); });
 
   resumeContinueBtn?.addEventListener("click", () => {
     if (!pendingResumeSession) return;
@@ -1662,6 +1779,7 @@
   toggleCardBtn?.addEventListener("click", () => {
     if (currentMode !== "host") return;
     playerCardPanel?.classList.add("open");
+    void pushHostGameState({});
   });
 
   lobbyNewBtn?.addEventListener("click", startNewGame);
@@ -1742,6 +1860,8 @@
           ? tr("bingo.spectator_status", { n: pool.length })
           : tr("bingo.game_finished_all");
         updateDemoSpectatorUI();
+      } else if (currentMode === "host") {
+        updateInactivityModal(loadAllGames()[currentGameId]);
       }
     }
     if (pendingResumeSession) {

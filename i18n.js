@@ -11,10 +11,10 @@
     "bingo.title": { ja: "ビンゴ司会 | Bingo4All", zh: "宾果主持 | Bingo4All", en: "Bingo Host | Bingo4All" },
     "bingo.header_sub": { ja: "パーティービンゴ司会", zh: "派对宾果主持", en: "Party Bingo Host" },
     "bingo.lobby_h1": { ja: "ビンゴ", zh: "宾果", en: "Bingo" },
-    "bingo.lobby_desc": { ja: "新しいゲームを開始するか、進行中のゲームを観戦できます。<br>同時に最大 10 ゲームまで実行できます。", zh: "可创建新游戏，或观战进行中的游戏。<br>最多同时进行 10 场游戏。", en: "Start a new game or watch one in progress.<br>Up to 10 games at once." },
+    "bingo.lobby_desc": { ja: "新しいゲームを開始するか、進行中のゲームを観戦できます。<br>同時に最大 20 ゲームまで実行できます。", zh: "可创建新游戏，或观战进行中的游戏。<br>最多同时进行 20 场游戏。", en: "Start a new game or watch one in progress.<br>Up to 20 games at once." },
     "bingo.lobby_new": { ja: "新しいゲームを開始", zh: "开始新游戏", en: "Start New Game" },
     "bingo.lobby_watch": { ja: "進行中のゲームを観戦", zh: "观战进行中的游戏", en: "Watch Live Games" },
-    "bingo.lobby_limit": { ja: "進行中: 0 / 10", zh: "进行中: 0 / 10", en: "Active: 0 / 10" },
+    "bingo.lobby_limit": { ja: "進行中: 0 / 20", zh: "进行中: 0 / 20", en: "Active: 0 / 20" },
     "bingo.watch_h2": { ja: "進行中のゲーム一覧", zh: "进行中的游戏", en: "Active Games" },
     "bingo.watch_empty": { ja: "進行中のゲームはありません", zh: "暂无进行中的游戏", en: "No active games" },
     "bingo.spectator_badge": { ja: "観戦モード", zh: "观战模式", en: "Spectator" },
@@ -45,7 +45,7 @@
     "bingo.qr_save_confirm": { ja: "観戦用QRコードを保存しますか？\n（画像ファイルとしてダウンロードされます）", zh: "是否保存观战二维码？\n（将下载为图片文件）", en: "Save spectator QR code?\n(Downloads as an image file)" },
     "bingo.watch_btn_count": { ja: "進行中のゲームを観戦 ({n})", zh: "观战进行中的游戏 ({n})", en: "Watch Live Games ({n})" },
     "bingo.lobby_limit_tpl": { ja: "進行中: {n} / {max}", zh: "进行中: {n} / {max}", en: "Active: {n} / {max}" },
-    "bingo.new_game_limit_title": { ja: "同時に実行できるゲームは最大 10 件です", zh: "最多同时进行 10 场游戏", en: "Maximum 10 concurrent games" },
+    "bingo.new_game_limit_title": { ja: "同時に実行できるゲームは最大 20 件です", zh: "最多同时进行 20 场游戏", en: "Maximum 20 concurrent games" },
     "bingo.game_meta_demo": { ja: "デモ · 司会 {host} · 出た {called} 個 · 残り {pool} 個 · 24時間稼働", zh: "演示 · 主持 {host} · 已出 {called} · 剩余 {pool} · 24小时运行", en: "Demo · Host {host} · Called {called} · Left {pool} · 24/7" },
     "bingo.game_meta": { ja: "司会 {host} · 出た {called} 個 · 残り {pool} 個 · 残時間 約{min}分", zh: "主持 {host} · 已出 {called} · 剩余 {pool} · 约剩 {min} 分钟", en: "Host {host} · Called {called} · Left {pool} · ~{min} min left" },
     "bingo.end_game": { ja: "終了", zh: "结束", en: "End" },
@@ -83,6 +83,11 @@
     "bingo.demo_sec": { ja: "{n}秒", zh: "{n}秒", en: "{n}s" },
     "bingo.demo_game_name": { ja: "デモ観戦（サーバー常時稼働）", zh: "演示观战（服务器 24/7 运行）", en: "Demo Spectator (Server 24/7)" },
     "bingo.demo_badge": { ja: "デモ", zh: "演示", en: "DEMO" },
+    "bingo.inactivity_title": { ja: "操作がありません", zh: "长时间未操作", en: "No Activity" },
+    "bingo.inactivity_desc": { ja: "司会者の操作が3分間ありませんでした。<br>1分後にこのゲームは自動終了します。", zh: "主持者已 3 分钟未操作。<br>1 分钟后本场游戏将自动结束。", en: "No host activity for 3 minutes.<br>This game will end in 1 minute." },
+    "bingo.inactivity_countdown": { ja: "終了まで {n} 秒", zh: "距结束 {n} 秒", en: "{n}s until end" },
+    "bingo.inactivity_continue": { ja: "ゲームを続ける", zh: "继续游戏", en: "Continue Game" },
+    "bingo.notice_inactivity": { ja: "司会者の無操作によりゲームが終了しました。", zh: "因主持者长时间未操作，游戏已结束。", en: "Game ended due to host inactivity." },
   };
 
   function getLang() {
