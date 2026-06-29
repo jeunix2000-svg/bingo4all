@@ -69,7 +69,7 @@
     "bingo.alert_other_host": { ja: "このゲームの司会者は別の端末です。観戦モードで入ってください。", zh: "此游戏主持在另一台设备，请以观战模式进入。", en: "Host is on another device. Enter as spectator." },
     "bingo.spectator_status": { ja: "観戦中 — 残り {n} 個の数字", zh: "观战中 — 剩余 {n} 个数字", en: "Watching — {n} numbers left" },
     "bingo.alert_max_games": { ja: "同時に実行できるゲームは最大 {max} 件です。\n進行中のゲームを終了するか、観戦のみ可能です。", zh: "最多同时进行 {max} 场游戏。\n请结束进行中的游戏或仅观战。", en: "Maximum {max} concurrent games.\nEnd one or watch only." },
-    "bingo.alert_ip_game_limit": { ja: "同一IPから同時に開始できるゲームは最大 {max} 件です。\n進行中のゲームを終了してから再度お試しください。", zh: "同一 IP 最多同时开始 {max} 场游戏。\n请先结束进行中的游戏后再试。", en: "Maximum {max} active games per IP address.\nEnd a game in progress and try again." },
+    "bingo.alert_ip_game_limit": { ja: "他の方もゲームを楽しめるよう、同時に作成できるゲームは最大 {max} 件までです。既存のゲームを終了してから、もう一度お試しください。", zh: "为了让其他人也能进行游戏，你只能同时最多创建 {max} 局游戏。请关闭现有游戏后再重新创建。", en: "To let others play too, you can create at most {max} games at a time. Please close an existing game before creating a new one." },
     "bingo.game_finished_all": { ja: "ゲーム終了 — 全ての数字が出ました", zh: "游戏结束 — 所有数字已出", en: "Game over — all numbers called" },
     "bingo.spectator_drawing": { ja: "観戦中 — 数字を抽選中…", zh: "观战中 — 正在抽号…", en: "Watching — drawing…" },
     "bingo.notice_timeout": { ja: "このゲームは5時間の上限に達したため自動終了しました。", zh: "游戏已达 5 小时上限，自动结束。", en: "Game auto-ended after 5-hour limit." },
