@@ -1129,7 +1129,12 @@
     renderPlayerCard();
   }
 
-  function drawFromPool() {
+  function drawFromPool(forcedNum) {
+    if (forcedNum != null) {
+      if (!pool.includes(forcedNum) || called.includes(forcedNum)) return null;
+      pool = pool.filter((n) => n !== forcedNum);
+      return forcedNum;
+    }
     if (!pool.length) return null;
     const num = pool.pop();
     if (called.includes(num)) {
@@ -1139,12 +1144,12 @@
     return num;
   }
 
-  async function drawNumber(comboLevel) {
+  async function drawNumber(comboLevel, forcedNum) {
     if (currentMode !== "host" || drawing || !pool.length) return;
     drawing = true;
     setDrawBtnEnabled(false);
 
-    const num = drawFromPool();
+    const num = drawFromPool(forcedNum);
     if (num === null) {
       drawing = false;
       setDrawBtnEnabled(false);
@@ -1222,7 +1227,7 @@
     await pushHostGameState({ liveDraw: null });
   }
 
-  function triggerDraw() {
+  function triggerDraw(forcedNum) {
     if (currentMode !== "host") return;
     const { level, increased } = addCombo();
     flashButton(drawBtn, level);
@@ -1232,7 +1237,8 @@
       return;
     }
     if (!pool.length) return;
-    drawNumber(level);
+    if (forcedNum != null && (!pool.includes(forcedNum) || called.includes(forcedNum))) return;
+    drawNumber(level, forcedNum);
   }
 
   function resetCurrentGame() {
@@ -1862,7 +1868,14 @@
   });
 
   drawBtn?.classList.add("is-ready");
-  drawBtn?.addEventListener("click", triggerDraw);
+  drawBtn?.addEventListener("click", () => triggerDraw());
+  masterBoardEl?.addEventListener("click", (e) => {
+    const cell = e.target.closest(".master-cell");
+    if (!cell || cell.classList.contains("called")) return;
+    const num = Number(cell.dataset.bingoNum);
+    if (!Number.isFinite(num)) return;
+    triggerDraw(num);
+  });
   resetBtn?.addEventListener("click", () => {
     if (currentMode !== "host") return;
     if (called.length && !confirm(tr("bingo.confirm_reset"))) return;
