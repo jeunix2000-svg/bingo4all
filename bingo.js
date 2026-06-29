@@ -20,8 +20,8 @@
   const MAX_GAME_DURATION_MS = 5 * 60 * 60 * 1000;
   const HOST_QR_SIZE = 216;
   const HOST_QR_LONG_PRESS_MS = 600;
-  const SYNC_URL = (window.YFC_PORTAL_CONFIG && window.YFC_PORTAL_CONFIG.bingoSyncUrl)
-    || "scripts/bingo-games.php";
+  const CFG = window.BINGO4ALL_CONFIG || {};
+  const SYNC_URL = CFG.bingoSyncUrl || CFG.apiUrl || "scripts/bingo-games.php";
   const SYNC_POLL_MS = 1000;
   const SPECTATOR_POLL_MS = 150;
   const BROADCAST = typeof BroadcastChannel !== "undefined"
@@ -133,10 +133,10 @@
   }
 
   function buildSpectatorJoinUrl(gameId) {
-    const portalBase = window.YFC_PORTAL_CONFIG?.portalBaseUrl;
-    const pageName = (window.location.pathname.split("/").pop() || "bingo.html");
-    const base = portalBase
-      ? `${String(portalBase).replace(/\/$/, "")}/${pageName}`
+    const appBase = CFG.appBaseUrl;
+    const pageName = (window.location.pathname.split("/").pop() || "index.html");
+    const base = appBase
+      ? `${String(appBase).replace(/\/$/, "")}/${pageName === "" ? "index.html" : pageName}`
       : `${window.location.origin}${window.location.pathname}`;
     const url = new URL(base);
     url.searchParams.set("watch", String(gameId));

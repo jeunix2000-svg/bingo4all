@@ -1,28 +1,18 @@
-# YFC AI Platform — Render 部署（API 服务）
-# 说明: html-fjkf.onrender.com 是静态门户+文档；本文件用于创建 Node API 服务。
-# 在 Render Dashboard → New → Blueprint → 连接本仓库，或手动创建 Web Service。
-#
-# 若已有 Postgres，创建服务后在 Environment 手动粘贴 DATABASE_URL（Internal URL）。
+# Bingo4All — Render Blueprint
+# 1. Static site: 前端（本仓库根目录）
+# 2. Web Service: api/ 目录下的 Node 同步 API
 
 services:
   - type: web
-    name: yfc-bingo-api
-    runtime: node
-    rootDir: bingo-api
-    plan: free
-    buildCommand: npm install
-    startCommand: npm start
-    healthCheckPath: /health
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PORTAL_ORIGIN
-        value: https://html-fjkf.onrender.com
+    name: bingo4all
+    runtime: static
+    buildCommand: ""
+    staticPublishPath: .
 
   - type: web
-    name: yfc-wiki-api
+    name: bingo4all-api
     runtime: node
-    rootDir: yfc-ai-platform/packages/wiki-module
+    rootDir: api
     plan: free
     buildCommand: npm install
     startCommand: npm start
@@ -30,31 +20,5 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORTAL_ORIGIN
-        value: https://html-fjkf.onrender.com
-      - key: DATABASE_URL
-        sync: false
-      - key: POINT_SERVICE_URL
-        sync: false
-
-  - type: web
-    name: yfc-points
-    runtime: node
-    rootDir: yfc-ai-platform/packages/point-service
-    plan: free
-    buildCommand: npm install
-    startCommand: npm start
-    healthCheckPath: /health
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PORTAL_ORIGIN
-        value: https://html-fjkf.onrender.com
-      - key: DATABASE_URL
-        sync: false
-
-# 若尚未创建数据库，可取消注释：
-# databases:
-#   - name: yfc-postgres
-#     plan: free
-#     postgresMajorVersion: "16"
+      - key: APP_ORIGIN
+        value: https://bingo4all.onrender.com
