@@ -941,6 +941,36 @@
 
     #resume-modal.open { display: flex; }
 
+    #inactivity-modal {
+      display: none;
+      position: fixed;
+      top: 4.25rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 410;
+      width: min(420px, calc(100% - 2rem));
+      pointer-events: none;
+    }
+
+    #inactivity-modal.open {
+      display: block;
+    }
+
+    #inactivity-modal .resume-card {
+      pointer-events: auto;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+      border-color: rgba(255, 215, 0, 0.35);
+    }
+
+    #inactivity-countdown {
+      display: block;
+      font-size: 2rem;
+      font-weight: 900;
+      color: #ffd700;
+      margin: 0.75rem 0 1rem;
+      letter-spacing: 0.06em;
+    }
+
     .resume-card {
       width: 100%;
       max-width: 420px;
@@ -1021,12 +1051,12 @@
     <div class="lobby-card">
       <div class="lobby-notice hidden" id="lobby-notice" role="alert"></div>
       <h1 data-i18n="bingo.lobby_h1">ビンゴ</h1>
-      <p class="lobby-desc" data-i18n="bingo.lobby_desc" data-i18n-html>新しいゲームを開始するか、進行中のゲームを観戦できます。<br>同時に最大 10 ゲームまで実行できます。</p>
+      <p class="lobby-desc" data-i18n="bingo.lobby_desc" data-i18n-html>新しいゲームを開始するか、進行中のゲームを観戦できます。<br>同時に最大 20 ゲームまで実行できます。</p>
       <div class="lobby-actions">
         <button class="btn-primary" id="lobby-new-btn" type="button" data-i18n="bingo.lobby_new">新しいゲームを開始</button>
         <button class="btn-secondary" id="lobby-watch-btn" type="button" data-i18n="bingo.lobby_watch">進行中のゲームを観戦</button>
       </div>
-      <p class="lobby-limit" id="lobby-limit-text" data-i18n="bingo.lobby_limit">進行中: 0 / 10</p>
+      <p class="lobby-limit" id="lobby-limit-text" data-i18n="bingo.lobby_limit">進行中: 0 / 20</p>
       <div class="watch-panel" id="watch-panel" hidden>
         <h2 data-i18n="bingo.watch_h2">進行中のゲーム一覧</h2>
         <ul class="game-list" id="game-list"></ul>
@@ -1106,6 +1136,17 @@
         <button class="btn-primary" id="resume-continue-btn" type="button" data-i18n="bingo.resume_continue">続ける</button>
         <button class="btn-danger" id="resume-abort-btn" type="button" hidden data-i18n="bingo.resume_abort">ゲームを中止</button>
         <button class="btn-secondary" id="resume-dismiss-btn" type="button" data-i18n="bingo.resume_lobby">ロビーへ</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="inactivity-modal" role="dialog" aria-modal="true" aria-labelledby="inactivity-modal-title">
+    <div class="resume-card">
+      <h2 id="inactivity-modal-title" data-i18n="bingo.inactivity_title">操作がありません</h2>
+      <p data-i18n="bingo.inactivity_desc" data-i18n-html>司会者の操作が3分間ありませんでした。<br>1分後にこのゲームは自動終了します。</p>
+      <strong id="inactivity-countdown">—</strong>
+      <div class="resume-actions">
+        <button class="btn-primary" id="inactivity-continue-btn" type="button" data-i18n="bingo.inactivity_continue">ゲームを続ける</button>
       </div>
     </div>
   </div>

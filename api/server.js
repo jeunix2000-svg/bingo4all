@@ -10,6 +10,8 @@ const { DEMO_GAME_ID, isDemoGame, tickDemoGame, ensureDemoGame } = require('./de
 
 const MAX_GAME_MS = 5 * 60 * 60 * 1000;
 const PRUNE_AGE_MS = 24 * 60 * 60 * 1000;
+const HOST_INACTIVITY_IDLE_MS = 3 * 60 * 1000;
+const HOST_INACTIVITY_GRACE_MS = 60 * 1000;
 const DATA_DIR = process.env.BINGO_DATA_DIR || path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'bingo-games.json');
 const PORTAL_ORIGIN = (process.env.APP_ORIGIN || process.env.PORTAL_ORIGIN || '*').trim();
@@ -81,6 +83,43 @@ function mergeGames(base, incoming) {
   return out;
 }
 
+function isUserGameActive(game) {
+  if (!game || typeof game !== 'object') return false;
+  if (game.status === 'aborted') return false;
+  if (isDemoGame(game)) return game.status === 'active';
+  return (Array.isArray(game.pool) && game.pool.length > 0) || !!game.liveDraw;
+}
+
+function applyInactivityTimeouts(games) {
+  const now = Date.now();
+  for (const game of Object.values(games)) {
+    if (!game || typeof game !== 'object') continue;
+    if (isDemoGame(game) || game.status === 'aborted') continue;
+    if (!isUserGameActive(game)) continue;
+
+    const lastActive = Number(game.hostLastActiveAt || game.updatedAt || game.createdAt || 0);
+
+    if (game.inactivityEndsAt) {
+      if (now >= Number(game.inactivityEndsAt)) {
+        game.status = 'finished';
+        game.endReason = 'inactivity';
+        game.endedAt = now;
+        game.updatedAt = now;
+        game.pool = [];
+        game.liveDraw = null;
+        game.inactivityEndsAt = null;
+      }
+      continue;
+    }
+
+    if (lastActive && now - lastActive >= HOST_INACTIVITY_IDLE_MS) {
+      game.inactivityEndsAt = now + HOST_INACTIVITY_GRACE_MS;
+      game.updatedAt = now;
+    }
+  }
+  return games;
+}
+
 function applyTimeouts(games) {
   const now = Date.now();
   for (const [id, game] of Object.entries(games)) {
@@ -120,6 +159,7 @@ function pruneOldGames(games) {
 function prepareGames(games) {
   ensureDemoGame(games);
   tickDemoGame(games);
+  applyInactivityTimeouts(games);
   applyTimeouts(games);
   pruneOldGames(games);
   return games;
