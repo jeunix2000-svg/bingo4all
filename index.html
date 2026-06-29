@@ -631,6 +631,88 @@
       font-size: 0.85rem;
     }
 
+    .digital-cards-setting {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      margin: 0.65rem 0 0.35rem;
+      font-size: 0.78rem;
+      color: rgba(255, 255, 255, 0.72);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .digital-cards-setting input {
+      width: 1rem;
+      height: 1rem;
+      accent-color: #ffd700;
+      cursor: pointer;
+    }
+
+    .physical-card-note {
+      margin: 0 0 0.5rem;
+      font-size: 0.7rem;
+      color: rgba(78, 205, 196, 0.85);
+      text-align: center;
+      line-height: 1.45;
+    }
+
+    .spectator-card-controls {
+      display: none;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-bottom: 0.65rem;
+    }
+
+    body.spectator-mode .spectator-card-controls {
+      display: flex;
+    }
+
+    .bingo-claim-btn {
+      background: linear-gradient(135deg, #ff6b6b, #ffd700) !important;
+      color: #1a1400 !important;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      animation: bingo-claim-pulse 1.4s ease-in-out infinite;
+    }
+
+    @keyframes bingo-claim-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.45); }
+      50% { box-shadow: 0 0 0 8px rgba(255, 215, 0, 0); }
+    }
+
+    .winner-banner {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.55rem;
+      margin-bottom: 0.75rem;
+      padding: 0.85rem 0.9rem;
+      border-radius: 12px;
+      background: rgba(255, 215, 0, 0.1);
+      border: 1px solid rgba(255, 215, 0, 0.38);
+      text-align: center;
+    }
+
+    .winner-banner.visible {
+      display: flex;
+    }
+
+    .winner-banner-text {
+      margin: 0;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #ffd700;
+      line-height: 1.5;
+    }
+
+    .winner-banner-text.is-self {
+      font-size: 0.92rem;
+      color: #fff;
+      text-shadow: 0 0 16px rgba(255, 215, 0, 0.45);
+    }
+
     #called-list { display: none; }
 
     #screen-flash {
@@ -1386,7 +1468,16 @@
         <div id="current-ball">START</div>
       </div>
       <p id="host-status" data-i18n="bingo.status_ready">準備完了</p>
+      <div id="winner-banner" class="winner-banner" role="status" aria-live="polite">
+        <p id="winner-banner-text" class="winner-banner-text"></p>
+        <button class="btn-primary host-controls" id="confirm-winner-btn" type="button" hidden data-i18n="bingo.confirm_winner">确认继续</button>
+      </div>
       <p class="spectator-note" data-i18n="bingo.spectator_note">観戦モード — 操作できません。状態は自動更新されます。</p>
+      <div class="spectator-card-controls" id="spectator-card-controls">
+        <button class="btn-primary" id="claim-card-btn" type="button" hidden data-i18n="bingo.claim_card">领取数字卡</button>
+        <button class="btn-secondary" id="view-card-btn" type="button" hidden data-i18n="bingo.view_card">查看数字卡</button>
+        <button class="btn-primary bingo-claim-btn" id="claim-bingo-btn" type="button" hidden data-i18n="bingo.claim_bingo">BINGO!</button>
+      </div>
       <div id="demo-spectator-panel" class="demo-spectator-panel" hidden>
         <div class="demo-countdown-wrap">
           <span class="demo-countdown-label" id="demo-countdown-label" data-i18n="bingo.demo_countdown_label">次の数字まで</span>
@@ -1403,7 +1494,11 @@
         <button class="btn-secondary" id="reset-btn" data-i18n="bingo.reset_btn">リセット</button>
       </div>
       <p class="hint host-controls" data-i18n="bingo.draw_hint">Space キーでも抽選</p>
-      <button class="btn-link host-controls" id="toggle-card-btn" type="button" data-i18n="bingo.card_btn">デジタルカード</button>
+      <label class="digital-cards-setting host-controls" for="digital-cards-toggle">
+        <input type="checkbox" id="digital-cards-toggle">
+        <span data-i18n="bingo.enable_digital_cards">启用数字卡</span>
+      </label>
+      <p class="physical-card-note host-controls" id="physical-card-note" data-i18n="bingo.physical_card_mode">当前使用实体纸片卡</p>
       <div id="host-qr-panel" class="host-qr-panel host-controls" hidden>
         <div class="host-qr-copy">
           <p class="host-qr-label" data-i18n="bingo.qr_label">スキャンして観戦</p>

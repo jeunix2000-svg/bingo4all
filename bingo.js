@@ -40,8 +40,15 @@
   const masterBoardEl = document.getElementById("master-board");
   const calledListEl = document.getElementById("called-list");
   const playerCardEl = document.getElementById("player-card");
-  const toggleCardBtn = document.getElementById("toggle-card-btn");
   const playerCardPanel = document.getElementById("player-card-panel");
+  const digitalCardsToggle = document.getElementById("digital-cards-toggle");
+  const physicalCardNote = document.getElementById("physical-card-note");
+  const claimCardBtn = document.getElementById("claim-card-btn");
+  const viewCardBtn = document.getElementById("view-card-btn");
+  const claimBingoBtn = document.getElementById("claim-bingo-btn");
+  const winnerBanner = document.getElementById("winner-banner");
+  const winnerBannerText = document.getElementById("winner-banner-text");
+  const confirmWinnerBtn = document.getElementById("confirm-winner-btn");
   const lobbyEl = document.getElementById("bingo-lobby");
   const gameWrapEl = document.getElementById("bingo-game-wrap");
   const lobbyNewBtn = document.getElementById("lobby-new-btn");
@@ -88,6 +95,11 @@
   let drawing = false;
   let playerCard = [];
   let playerMarked = [];
+  let digitalCardsEnabled = false;
+  let spectatorCards = {};
+  let pendingWinner = null;
+  let confirmedWinners = [];
+  let lastCelebratedWinnerKey = null;
   let activeDraw = null;
   let currentGameId = null;
   /** @type {'host'|'spectator'|null} */
@@ -137,6 +149,22 @@
     } catch (_) {
       return "local";
     }
+  }
+
+  function getDeviceLabel() {
+    try {
+      const host = getHostLabel();
+      const id = getClientId();
+      return `${host}·${id.slice(-5)}`;
+    } catch (_) {
+      return "device";
+    }
+  }
+
+  function getSpectatorApiUrl() {
+    const base = String(SYNC_URL || "").replace(/\/$/, "");
+    if (!base) return "";
+    return `${base}/api/spectator`;
   }
 
   function buildSpectatorJoinUrl(gameId) {
@@ -603,6 +631,8 @@
     updateHostQrCode();
     if (currentMode === "host" && currentGameId) {
       updateInactivityModal(loadAllGames()[currentGameId]);
+      updateDigitalCardUI();
+      updateWinnerUI();
     }
   }
 
@@ -772,7 +802,6 @@
     const id = String(Date.now());
     const now = Number(id);
     const fullPool = shuffle(Array.from({ length: 75 }, (_, i) => i + 1));
-    const card = buildPlayerCard();
     const clientId = getClientId();
     return {
       id,
@@ -786,8 +815,10 @@
       inactivityEndsAt: null,
       pool: fullPool,
       called: [],
-      playerCard: card.playerCard,
-      playerMarked: card.playerMarked,
+      digitalCardsEnabled: false,
+      spectatorCards: {},
+      pendingWinner: null,
+      confirmedWinners: [],
     };
   }
 
@@ -883,6 +914,188 @@
     return RANGES.find((r) => num >= r.min && num <= r.max);
   }
 
+  function isCellMarkedForBingo(col, row, card, calledList) {
+    if (col === 2 && row === 2) return true;
+    const num = card[col][row];
+    return num !== null && calledList.includes(num);
+  }
+
+  function checkCardBingo(card, calledList) {
+    if (!Array.isArray(card) || card.length !== 5) return false;
+    for (let row = 0; row < 5; row += 1) {
+      let complete = true;
+      for (let col = 0; col < 5; col += 1) {
+        if (!isCellMarkedForBingo(col, row, card, calledList)) complete = false;
+      }
+      if (complete) return true;
+    }
+    for (let col = 0; col < 5; col += 1) {
+      let complete = true;
+      for (let row = 0; row < 5; row += 1) {
+        if (!isCellMarkedForBingo(col, row, card, calledList)) complete = false;
+      }
+      if (complete) return true;
+    }
+    let complete = true;
+    for (let i = 0; i < 5; i += 1) {
+      if (!isCellMarkedForBingo(i, i, card, calledList)) complete = false;
+    }
+    if (complete) return true;
+    complete = true;
+    for (let i = 0; i < 5; i += 1) {
+      if (!isCellMarkedForBingo(i, 4 - i, card, calledList)) complete = false;
+    }
+    return complete;
+  }
+
+  function hasMySpectatorCard() {
+    return !!(spectatorCards[getClientId()]?.playerCard?.length || playerCard?.length);
+  }
+
+  function hasConfirmedWin() {
+    return (confirmedWinners || []).some((w) => w.clientId === getClientId());
+  }
+
+  async function postSpectatorAction(action, data = {}) {
+    const url = getSpectatorApiUrl();
+    if (!url || !currentGameId) return { ok: false };
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          gameId: currentGameId,
+          clientId: getClientId(),
+          action,
+          data,
+        }),
+      });
+      let payload = null;
+      try {
+        payload = await res.json();
+      } catch {
+        payload = null;
+      }
+      if (payload?.games) mergeServerGames(payload.games);
+      return { ok: res.ok, error: payload?.error, data: payload };
+    } catch (_) {
+      return { ok: false };
+    }
+  }
+
+  async function claimSpectatorCard() {
+    if (currentMode !== "spectator" || !digitalCardsEnabled || hasMySpectatorCard()) return;
+    const built = buildPlayerCard();
+    playerCard = built.playerCard;
+    playerMarked = built.playerMarked;
+    const result = await postSpectatorAction("claimCard", {
+      deviceLabel: getDeviceLabel(),
+      playerCard,
+      playerMarked,
+    });
+    if (!result.ok) {
+      alert(tr("bingo.alert_claim_card_fail"));
+      return;
+    }
+    await syncFromRemote();
+    const game = loadAllGames()[currentGameId];
+    if (game) applyGameState(game);
+    renderPlayerCard();
+    playerCardPanel?.classList.add("open");
+    updateDigitalCardUI();
+  }
+
+  async function claimSpectatorBingo() {
+    if (currentMode !== "spectator" || !digitalCardsEnabled || !hasMySpectatorCard()) return;
+    if (!checkCardBingo(playerCard, called)) return;
+    const result = await postSpectatorAction("claimBingo", { hasBingo: true });
+    if (!result.ok) {
+      alert(tr("bingo.alert_claim_bingo_fail"));
+      return;
+    }
+    await syncFromRemote();
+    const game = loadAllGames()[currentGameId];
+    if (game) {
+      applyGameState(game);
+      updateWinnerUI();
+    }
+  }
+
+  async function confirmPendingWinner() {
+    if (currentMode !== "host" || !pendingWinner || !currentGameId) return;
+    const games = loadAllGames();
+    const existing = games[currentGameId] || {};
+    const nextConfirmed = [...(existing.confirmedWinners || confirmedWinners || []), {
+      ...pendingWinner,
+      confirmedAt: Date.now(),
+    }];
+    confirmedWinners = nextConfirmed;
+    pendingWinner = null;
+    lastCelebratedWinnerKey = null;
+    await pushHostGameState({
+      pendingWinner: null,
+      confirmedWinners: nextConfirmed,
+    });
+    updateWinnerUI();
+  }
+
+  function showWinnerCelebrationOnce(winner) {
+    if (!winner) return;
+    const key = `${winner.clientId}-${winner.claimedAt}`;
+    if (lastCelebratedWinnerKey === key) return;
+    lastCelebratedWinnerKey = key;
+    if (typeof showCelebration === "function") {
+      showCelebration({
+        subtitle: tr("bingo.winner_celebrate"),
+        intensity: 5,
+      });
+    }
+  }
+
+  function updateDigitalCardUI() {
+    const game = currentGameId ? loadAllGames()[currentGameId] : null;
+    const spectator = currentMode === "spectator" && game && !isDemoGame(game);
+    const enabled = spectator && digitalCardsEnabled;
+
+    if (claimCardBtn) claimCardBtn.hidden = !enabled || hasMySpectatorCard() || !!pendingWinner;
+    if (viewCardBtn) viewCardBtn.hidden = !enabled || !hasMySpectatorCard();
+    if (claimBingoBtn) {
+      const canClaim = enabled
+        && hasMySpectatorCard()
+        && !hasConfirmedWin()
+        && !pendingWinner
+        && checkCardBingo(playerCard, called);
+      claimBingoBtn.hidden = !canClaim;
+    }
+
+    if (currentMode === "host") {
+      if (digitalCardsToggle) digitalCardsToggle.checked = !!digitalCardsEnabled;
+      if (physicalCardNote) physicalCardNote.hidden = !!digitalCardsEnabled;
+    }
+  }
+
+  function updateWinnerUI() {
+    const hasPending = !!pendingWinner;
+    const isSelf = hasPending && pendingWinner.clientId === getClientId();
+
+    if (winnerBanner) winnerBanner.classList.toggle("visible", hasPending);
+    if (winnerBannerText) {
+      winnerBannerText.classList.toggle("is-self", isSelf);
+      if (!hasPending) {
+        winnerBannerText.textContent = "";
+      } else if (currentMode === "host") {
+        winnerBannerText.textContent = tr("bingo.winner_host_msg", { name: pendingWinner.deviceLabel });
+      } else if (isSelf) {
+        winnerBannerText.textContent = tr("bingo.winner_self_msg");
+        showWinnerCelebrationOnce(pendingWinner);
+      } else {
+        winnerBannerText.textContent = tr("bingo.winner_other_msg", { name: pendingWinner.deviceLabel });
+      }
+    }
+    if (confirmWinnerBtn) confirmWinnerBtn.hidden = currentMode !== "host" || !hasPending;
+    updateDigitalCardUI();
+  }
+
   function renderMasterBoard() {
     masterBoardEl.innerHTML = RANGES.map((range) => {
       const nums = Array.from({ length: range.max - range.min + 1 }, (_, i) => range.min + i);
@@ -915,7 +1128,10 @@
 
   function buildSpectatorSnapshot(game) {
     const liveDrawId = game?.liveDraw?.id || "";
-    return `${game?.called?.length ?? 0}:${game?.called?.[game.called.length - 1] ?? ""}:${game?.pool?.length ?? 0}:${liveDrawId}`;
+    const pendingId = game?.pendingWinner?.clientId || "";
+    const cardsOn = game?.digitalCardsEnabled ? "1" : "0";
+    const myCard = game?.spectatorCards?.[getClientId()] ? "1" : "0";
+    return `${game?.called?.length ?? 0}:${game?.called?.[game.called.length - 1] ?? ""}:${game?.pool?.length ?? 0}:${liveDrawId}:${pendingId}:${cardsOn}:${myCard}`;
   }
 
   async function pushHostGameState(patch = {}) {
@@ -938,8 +1154,12 @@
       inactivityEndsAt: null,
       pool: [...pool],
       called: [...called],
-      playerCard,
-      playerMarked,
+      digitalCardsEnabled: "digitalCardsEnabled" in patch
+        ? !!patch.digitalCardsEnabled
+        : !!existing.digitalCardsEnabled,
+      spectatorCards: patch.spectatorCards ?? existing.spectatorCards ?? {},
+      pendingWinner: "pendingWinner" in patch ? patch.pendingWinner : (existing.pendingWinner ?? null),
+      confirmedWinners: patch.confirmedWinners ?? existing.confirmedWinners ?? [],
       liveDraw: nextLiveDraw,
     });
     await saveAllGames(games);
@@ -955,8 +1175,23 @@
     const g = normalizeGameState({ ...game });
     pool = [...g.pool];
     called = [...g.called];
-    playerCard = g.playerCard?.length ? g.playerCard : buildPlayerCard().playerCard;
-    playerMarked = g.playerMarked?.length ? g.playerMarked : buildPlayerCard().playerMarked;
+    digitalCardsEnabled = !!g.digitalCardsEnabled;
+    spectatorCards = g.spectatorCards || {};
+    pendingWinner = g.pendingWinner || null;
+    confirmedWinners = g.confirmedWinners || [];
+    if (currentMode === "spectator") {
+      const mine = spectatorCards[getClientId()];
+      if (mine?.playerCard?.length) {
+        playerCard = mine.playerCard;
+        playerMarked = mine.playerMarked?.length ? mine.playerMarked : buildPlayerCard().playerMarked;
+      } else {
+        playerCard = [];
+        playerMarked = [];
+      }
+    } else {
+      playerCard = [];
+      playerMarked = [];
+    }
   }
 
   function restoreDisplay() {
@@ -972,10 +1207,16 @@
     renderMasterBoard();
     renderCalledList();
     updateStats();
-    renderPlayerCard();
+    if (currentMode === "spectator" && hasMySpectatorCard()) {
+      renderPlayerCard();
+    } else if (playerCardEl) {
+      playerCardEl.innerHTML = "";
+    }
     if (currentMode === "host") {
       setDrawBtnEnabled(!!pool.length && !drawing);
     }
+    updateDigitalCardUI();
+    updateWinnerUI();
     updateGameBar();
   }
 
@@ -1090,7 +1331,10 @@
   }
 
   function renderPlayerCard() {
-    if (!playerCardEl) return;
+    if (!playerCardEl || !hasMySpectatorCard()) {
+      if (playerCardEl) playerCardEl.innerHTML = "";
+      return;
+    }
     let html = '<div class="mini-header">';
     RANGES.forEach((r) => { html += `<span style="color:${r.color}">${r.letter}</span>`; });
     html += '</div><div class="mini-grid">';
@@ -1098,39 +1342,21 @@
       for (let col = 0; col < 5; col++) {
         const isFree = row === 2 && col === 2;
         const num = playerCard[col][row];
-        const onCard = num !== null && called.includes(num);
-        const manual = playerMarked[col][row];
-        const marked = isFree || onCard || manual;
+        const marked = isFree || (num !== null && called.includes(num));
         const cls = ["mini-cell", marked ? "marked" : "", isFree ? "free" : ""].filter(Boolean).join(" ");
-        html += `<button type="button" class="${cls}" data-col="${col}" data-row="${row}" ${isFree ? "disabled" : ""}>`;
+        html += `<div class="${cls}">`;
         html += isFree ? "FREE" : num;
-        html += "</button>";
+        html += "</div>";
       }
     }
     html += "</div>";
     playerCardEl.innerHTML = html;
-
-    if (currentMode !== "host") return;
-
-    playerCardEl.querySelectorAll(".mini-cell:not(.free)").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const col = +btn.dataset.col;
-        const row = +btn.dataset.row;
-        playerMarked[col][row] = !playerMarked[col][row];
-        renderPlayerCard();
-        persistCurrentGame();
-      });
-    });
   }
 
   function autoMarkPlayerCard() {
-    for (let col = 0; col < 5; col++) {
-      for (let row = 0; row < 5; row++) {
-        const num = playerCard[col][row];
-        if (num !== null && called.includes(num)) playerMarked[col][row] = true;
-      }
-    }
+    if (!hasMySpectatorCard()) return;
     renderPlayerCard();
+    updateDigitalCardUI();
   }
 
   function drawFromPool() {
@@ -1254,7 +1480,8 @@
     renderCalledList();
     updateStats();
     setDrawBtnEnabled(true);
-    generatePlayerCard();
+    updateDigitalCardUI();
+    updateWinnerUI();
     persistCurrentGame();
   }
 
@@ -1784,6 +2011,7 @@
     applyGameState(game);
     restoreDisplay();
     spectatorSnapshot = nextSnapshot;
+    updateWinnerUI();
     statusEl.textContent = pool.length
       ? tr("bingo.spectator_status", { n: pool.length })
       : tr("bingo.game_finished_all");
@@ -1877,11 +2105,22 @@
     resetCurrentGame();
   });
 
-  toggleCardBtn?.addEventListener("click", () => {
-    if (currentMode !== "host") return;
-    playerCardPanel?.classList.add("open");
-    void pushHostGameState({});
+  digitalCardsToggle?.addEventListener("change", () => {
+    if (currentMode !== "host" || !currentGameId) return;
+    void pushHostGameState({ digitalCardsEnabled: !!digitalCardsToggle.checked }).then(() => {
+      digitalCardsEnabled = !!digitalCardsToggle.checked;
+      updateDigitalCardUI();
+    });
   });
+
+  claimCardBtn?.addEventListener("click", () => { void claimSpectatorCard(); });
+  viewCardBtn?.addEventListener("click", () => {
+    if (!hasMySpectatorCard()) return;
+    renderPlayerCard();
+    playerCardPanel?.classList.add("open");
+  });
+  claimBingoBtn?.addEventListener("click", () => { void claimSpectatorBingo(); });
+  confirmWinnerBtn?.addEventListener("click", () => { void confirmPendingWinner(); });
 
   lobbyNewBtn?.addEventListener("click", startNewGame);
   demoNewGameBtn?.addEventListener("click", () => { void startNewGame(); });
@@ -1963,6 +2202,8 @@
         updateDemoSpectatorUI();
       } else if (currentMode === "host") {
         updateInactivityModal(loadAllGames()[currentGameId]);
+        updateDigitalCardUI();
+        updateWinnerUI();
       }
     }
     if (pendingResumeSession) {

@@ -109,7 +109,16 @@ function mergeGames(base, incoming, clientIp) {
     }
 
     if (gameTimestamp(game) >= gameTimestamp(existing)) {
-      out[gid] = { ...game, hostIp: existing.hostIp || game.hostIp };
+      out[gid] = {
+        ...game,
+        hostIp: existing.hostIp || game.hostIp,
+        digitalCardsEnabled: 'digitalCardsEnabled' in game
+          ? !!game.digitalCardsEnabled
+          : !!existing.digitalCardsEnabled,
+        spectatorCards: game.spectatorCards ?? existing.spectatorCards ?? {},
+        pendingWinner: 'pendingWinner' in game ? game.pendingWinner : (existing.pendingWinner ?? null),
+        confirmedWinners: game.confirmedWinners ?? existing.confirmedWinners ?? [],
+      };
     }
   }
 
@@ -199,6 +208,68 @@ function prepareGames(games) {
   return games;
 }
 
+const BINGO_RANGES = [
+  { min: 1, max: 15 },
+  { min: 16, max: 30 },
+  { min: 31, max: 45 },
+  { min: 46, max: 60 },
+  { min: 61, max: 75 },
+];
+
+function isCellMarkedForBingo(col, row, card, calledSet) {
+  if (col === 2 && row === 2) return true;
+  const num = card[col][row];
+  return num !== null && num !== undefined && calledSet.has(Number(num));
+}
+
+function checkCardBingo(card, called) {
+  if (!Array.isArray(card) || card.length !== 5) return false;
+  const calledSet = new Set((called || []).map(Number));
+  for (let row = 0; row < 5; row += 1) {
+    let complete = true;
+    for (let col = 0; col < 5; col += 1) {
+      if (!isCellMarkedForBingo(col, row, card, calledSet)) complete = false;
+    }
+    if (complete) return true;
+  }
+  for (let col = 0; col < 5; col += 1) {
+    let complete = true;
+    for (let row = 0; row < 5; row += 1) {
+      if (!isCellMarkedForBingo(col, row, card, calledSet)) complete = false;
+    }
+    if (complete) return true;
+  }
+  let complete = true;
+  for (let i = 0; i < 5; i += 1) {
+    if (!isCellMarkedForBingo(i, i, card, calledSet)) complete = false;
+  }
+  if (complete) return true;
+  complete = true;
+  for (let i = 0; i < 5; i += 1) {
+    if (!isCellMarkedForBingo(i, 4 - i, card, calledSet)) complete = false;
+  }
+  return complete;
+}
+
+function validateSpectatorCard(card, marked) {
+  if (!Array.isArray(card) || card.length !== 5) return false;
+  if (!Array.isArray(marked) || marked.length !== 5) return false;
+  for (let col = 0; col < 5; col += 1) {
+    if (!Array.isArray(card[col]) || card[col].length !== 5) return false;
+    if (!Array.isArray(marked[col]) || marked[col].length !== 5) return false;
+    for (let row = 0; row < 5; row += 1) {
+      if (col === 2 && row === 2) {
+        if (card[col][row] !== null) return false;
+        continue;
+      }
+      const num = Number(card[col][row]);
+      const range = BINGO_RANGES[col];
+      if (!Number.isFinite(num) || num < range.min || num > range.max) return false;
+    }
+  }
+  return true;
+}
+
 function respondGames(res, games, req) {
   const clientIp = getClientIp(req);
   res.set('Cache-Control', 'no-store');
@@ -248,6 +319,82 @@ app.post(['/', '/api/games'], (req, res) => {
     return res.status(500).json({ error: 'SAVE_FAILED' });
   }
   respondGames(res, prepared, req);
+});
+
+app.post(['/api/spectator', '/spectator'], (req, res) => {
+  const { gameId, clientId, action, data } = req.body || {};
+  if (!gameId || !clientId || !action) {
+    return res.status(400).json({ error: 'INVALID_PAYLOAD' });
+  }
+
+  const games = prepareGames(loadGames());
+  const gid = String(gameId);
+  const game = games[gid];
+  if (!game || typeof game !== 'object' || isDemoGame(game) || game.status === 'aborted') {
+    return res.status(404).json({ error: 'GAME_NOT_FOUND' });
+  }
+  if (!isUserGameActive(game)) {
+    return res.status(409).json({ error: 'GAME_NOT_ACTIVE' });
+  }
+
+  const now = Date.now();
+  const cid = String(clientId);
+  game.spectatorCards = game.spectatorCards || {};
+  game.confirmedWinners = game.confirmedWinners || [];
+
+  if (action === 'claimCard') {
+    if (!game.digitalCardsEnabled) {
+      return res.status(403).json({ error: 'DIGITAL_CARDS_DISABLED' });
+    }
+    if (game.spectatorCards[cid]) {
+      return respondGames(res, games, req);
+    }
+    const card = data?.playerCard;
+    const marked = data?.playerMarked;
+    if (!validateSpectatorCard(card, marked)) {
+      return res.status(400).json({ error: 'INVALID_CARD' });
+    }
+    game.spectatorCards[cid] = {
+      clientId: cid,
+      deviceLabel: String(data?.deviceLabel || cid).slice(0, 80),
+      playerCard: card,
+      playerMarked: marked,
+      claimedAt: now,
+    };
+    game.updatedAt = now;
+  } else if (action === 'claimBingo') {
+    if (!game.digitalCardsEnabled) {
+      return res.status(403).json({ error: 'DIGITAL_CARDS_DISABLED' });
+    }
+    if (game.pendingWinner) {
+      return res.status(409).json({ error: 'PENDING_WINNER_EXISTS' });
+    }
+    const entry = game.spectatorCards[cid];
+    if (!entry) {
+      return res.status(404).json({ error: 'NO_CARD' });
+    }
+    if ((game.confirmedWinners || []).some((w) => w.clientId === cid)) {
+      return res.status(409).json({ error: 'ALREADY_WON' });
+    }
+    if (!checkCardBingo(entry.playerCard, game.called || [])) {
+      return res.status(400).json({ error: 'NOT_BINGO' });
+    }
+    game.pendingWinner = {
+      clientId: cid,
+      deviceLabel: entry.deviceLabel || cid,
+      claimedAt: now,
+    };
+    game.updatedAt = now;
+  } else {
+    return res.status(400).json({ error: 'UNKNOWN_ACTION' });
+  }
+
+  try {
+    saveGames(games);
+  } catch {
+    return res.status(500).json({ error: 'SAVE_FAILED' });
+  }
+  respondGames(res, games, req);
 });
 
 setInterval(() => {

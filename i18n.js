@@ -90,6 +90,18 @@
     "bingo.inactivity_countdown": { ja: "終了まで {n} 秒", zh: "距结束 {n} 秒", en: "{n}s until end" },
     "bingo.inactivity_continue": { ja: "ゲームを続ける", zh: "继续游戏", en: "Continue Game" },
     "bingo.notice_inactivity": { ja: "司会者の無操作によりゲームが終了しました。", zh: "因主持者长时间未操作，游戏已结束。", en: "Game ended due to host inactivity." },
+    "bingo.enable_digital_cards": { ja: "デジタルカードを有効にする", zh: "启用数字卡", en: "Enable digital cards" },
+    "bingo.physical_card_mode": { ja: "現在は紙のビンゴカードでプレイ中", zh: "当前使用实体纸片卡", en: "Using physical paper cards" },
+    "bingo.claim_card": { ja: "デジタルカードを受け取る", zh: "领取数字卡", en: "Claim Digital Card" },
+    "bingo.view_card": { ja: "デジタルカードを見る", zh: "查看数字卡", en: "View Digital Card" },
+    "bingo.claim_bingo": { ja: "ビンゴ！", zh: "宾果！", en: "BINGO!" },
+    "bingo.confirm_winner": { ja: "勝者を確認して続ける", zh: "确认赢家并继续", en: "Confirm winner & continue" },
+    "bingo.winner_host_msg": { ja: "勝者: {name}", zh: "赢家：{name}", en: "Winner: {name}" },
+    "bingo.winner_self_msg": { ja: "あなたのビンゴ！", zh: "你赢了！", en: "You won!" },
+    "bingo.winner_other_msg": { ja: "勝者: {name}", zh: "赢家：{name}", en: "Winner: {name}" },
+    "bingo.winner_celebrate": { ja: "おめでとうございます！", zh: "恭喜中奖！", en: "Congratulations!" },
+    "bingo.alert_claim_card_fail": { ja: "デジタルカードを受け取れませんでした。", zh: "无法领取数字卡。", en: "Could not claim digital card." },
+    "bingo.alert_claim_bingo_fail": { ja: "ビンゴの申告に失敗しました。", zh: "宾果申报失败。", en: "Could not claim BINGO." },
   };
 
   function getLang() {

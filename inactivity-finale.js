@@ -1,5 +1,5 @@
 /**
- * 无操作结束倒计时最后 15 秒 — 全屏数字旋转向中心消失
+ * 无操作结束倒计时最后 15 秒 — 全屏秒数缩小变淡 + 数字旋转向中心
  */
 (() => {
   const FINALE_THRESHOLD = 15;
@@ -58,31 +58,43 @@
         position: fixed;
         left: 50%;
         top: 50%;
-        transform: translate(-50%, -50%);
+        transform: translate(-50%, -50%) scale(1);
         z-index: 391;
         display: none;
         align-items: center;
         justify-content: center;
-        width: min(42vw, 200px);
-        height: min(42vw, 200px);
-        border-radius: 50%;
-        font-size: clamp(4rem, 18vw, 7rem);
+        width: auto;
+        height: auto;
+        margin: 0;
+        padding: 0;
+        border: none;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+        font-size: min(72vw, 72vh);
         font-weight: 900;
+        line-height: 1;
         color: #fff;
         letter-spacing: -0.04em;
-        text-shadow: 0 0 40px rgba(255, 80, 80, 0.9), 0 0 80px rgba(255, 215, 0, 0.45);
-        border: 4px solid rgba(255, 100, 100, 0.75);
-        background: radial-gradient(circle, rgba(120, 20, 20, 0.88) 0%, rgba(30, 10, 10, 0.92) 70%);
-        box-shadow: 0 0 60px rgba(255, 60, 60, 0.45), inset 0 0 30px rgba(0,0,0,0.35);
+        text-shadow:
+          0 0 40px rgba(255, 80, 80, 0.95),
+          0 0 90px rgba(255, 215, 0, 0.55),
+          0 8px 32px rgba(0, 0, 0, 0.65);
         pointer-events: none;
+        opacity: 1;
       }
-      #inactivity-finale-countdown.pulse {
-        animation: inactivity-finale-pulse 0.55s cubic-bezier(0.34, 1.45, 0.64, 1);
+      #inactivity-finale-countdown.tick {
+        animation: inactivity-finale-second 1s ease-out forwards;
       }
-      @keyframes inactivity-finale-pulse {
-        0%   { transform: translate(-50%, -50%) scale(0.82); opacity: 0.7; }
-        45%  { transform: translate(-50%, -50%) scale(1.12); opacity: 1; }
-        100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+      @keyframes inactivity-finale-second {
+        0% {
+          transform: translate(-50%, -50%) scale(1);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(-50%, -50%) scale(0.22);
+          opacity: 0;
+        }
       }
     `;
     document.head.appendChild(style);
@@ -223,9 +235,11 @@
   function updateCenterCountdown(remain) {
     if (!centerEl) return;
     centerEl.textContent = String(remain);
-    centerEl.classList.remove("pulse");
+    centerEl.classList.remove("tick");
     void centerEl.offsetWidth;
-    centerEl.classList.add("pulse");
+    centerEl.style.opacity = "1";
+    centerEl.style.transform = "translate(-50%, -50%) scale(1)";
+    centerEl.classList.add("tick");
   }
 
   function showOverlay() {
@@ -245,7 +259,10 @@
       canvas.style.display = "none";
       if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
-    if (centerEl) centerEl.style.display = "none";
+    if (centerEl) {
+      centerEl.style.display = "none";
+      centerEl.classList.remove("tick");
+    }
   }
 
   window.updateInactivityFinale = function updateInactivityFinale(remainSec) {
