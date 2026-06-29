@@ -37,6 +37,7 @@
   const statusEl = document.getElementById("host-status");
   const remainEl = document.getElementById("remain-count");
   const calledCountEl = document.getElementById("called-count");
+  const participantCountEl = document.getElementById("participant-count");
   const masterBoardEl = document.getElementById("master-board");
   const calledListEl = document.getElementById("called-list");
   const playerCardEl = document.getElementById("player-card");
@@ -1105,6 +1106,7 @@
       if (digitalCardsToggle) digitalCardsToggle.checked = !!digitalCardsEnabled;
       if (physicalCardNote) physicalCardNote.hidden = !!digitalCardsEnabled;
     }
+    updateParticipantDisplay();
   }
 
   function updateWinnerUI() {
@@ -1164,7 +1166,8 @@
     const pendingId = game?.pendingWinner?.clientId || "";
     const cardsOn = game?.digitalCardsEnabled ? "1" : "0";
     const myCard = game?.spectatorCards?.[getClientId()] ? "1" : "0";
-    return `${game?.called?.length ?? 0}:${game?.called?.[game.called.length - 1] ?? ""}:${game?.pool?.length ?? 0}:${liveDrawId}:${pendingId}:${cardsOn}:${myCard}`;
+    const participants = Object.keys(game?.spectatorCards || {}).length;
+    return `${game?.called?.length ?? 0}:${game?.called?.[game.called.length - 1] ?? ""}:${game?.pool?.length ?? 0}:${liveDrawId}:${pendingId}:${cardsOn}:${myCard}:${participants}`;
   }
 
   async function pushHostGameState(patch = {}) {
@@ -1251,9 +1254,22 @@
     updateGameBar();
   }
 
+  function getParticipantCount() {
+    if (!digitalCardsEnabled) return null;
+    return Object.values(spectatorCards || {}).filter((entry) => entry?.playerCard?.length).length;
+  }
+
+  function updateParticipantDisplay() {
+    const count = getParticipantCount();
+    if (participantCountEl) {
+      participantCountEl.textContent = count === null ? "—" : String(count);
+    }
+  }
+
   function updateStats() {
     remainEl.textContent = pool.length;
     calledCountEl.textContent = called.length;
+    updateParticipantDisplay();
     statusEl.textContent = pool.length
       ? tr("bingo.status_remain", { n: pool.length })
       : tr("bingo.status_all_called");
@@ -1267,7 +1283,12 @@
     const name = displayGameName(game);
     gameBarName.textContent = name;
     if (gameBarMeta) {
-      gameBarMeta.textContent = tr("bingo.game_bar_meta", { called: called.length, pool: pool.length });
+      const count = getParticipantCount();
+      gameBarMeta.textContent = tr("bingo.game_bar_meta", {
+        called: called.length,
+        pool: pool.length,
+        n: count === null ? "—" : count,
+      });
     }
   }
 
