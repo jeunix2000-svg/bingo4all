@@ -26,8 +26,11 @@
   const HOST_QR_EC_LEVEL = () => (typeof QRCode !== "undefined" ? QRCode.CorrectLevel.H : 2);
   const CFG = window.BINGO4ALL_CONFIG || {};
   const SYNC_URL = CFG.bingoSyncUrl || CFG.apiUrl || "scripts/bingo-games.php";
-  const SYNC_POLL_MS = 1000;
-  const SPECTATOR_POLL_MS = 150;
+  const LOBBY_POLL_MS = 2000;
+  const HOST_GAME_POLL_MS = 1000;
+  const SPECTATOR_POLL_FAST_MS = 150;
+  const SPECTATOR_POLL_MED_MS = 500;
+  const SPECTATOR_POLL_SLOW_MS = 2000;
   const BROADCAST = typeof BroadcastChannel !== "undefined"
     ? new BroadcastChannel("portal-bingo")
     : null;
@@ -117,6 +120,9 @@
   let syncInFlight = null;
   let remoteSyncEnabled = true;
   let remoteQuota = { ipActiveGames: 0, maxActiveGamesPerIp: 2 };
+  let hostGamePollTimer = null;
+  let remoteRevision = 0;
+  let remoteGameUpdatedAt = 0;
 
   function snapshotState() {
     return `${called.length}:${called[called.length - 1] ?? ""}:${pool.length}`;
@@ -531,7 +537,10 @@
   function isGameActive(game) {
     if (!game || isGameAborted(game)) return false;
     if (isDemoGame(game)) return game.status === "active";
-    return (Array.isArray(game.pool) && game.pool.length > 0) || !!game.liveDraw;
+    if (Array.isArray(game.pool) && game.pool.length > 0) return true;
+    if (game.liveDraw || game.hasLiveDraw) return true;
+    if (typeof game.poolCount === "number" && game.poolCount > 0) return true;
+    return false;
   }
 
   function getActiveGames(games) {
@@ -728,21 +737,114 @@
     } catch (_) { /* storage full */ }
   }
 
-  async function fetchRemoteGames() {
+  function applyRemoteMeta(data) {
+    if (!data || typeof data !== "object") return;
+    if (typeof data.revision === "number") remoteRevision = data.revision;
+    applyRemoteQuota(data);
+  }
+
+  function getSyncBaseUrl() {
+    return String(SYNC_URL || "").replace(/\/$/, "");
+  }
+
+  function getCalledCount(game) {
+    if (!game) return 0;
+    if (Array.isArray(game.called)) return game.called.length;
+    if (typeof game.calledCount === "number") return game.calledCount;
+    return 0;
+  }
+
+  function getPoolCount(game) {
+    if (!game) return 0;
+    if (Array.isArray(game.pool)) return game.pool.length;
+    if (typeof game.poolCount === "number") return game.poolCount;
+    return 0;
+  }
+
+  function mergeSummaryIntoCache(summaries) {
+    if (!Array.isArray(summaries)) return false;
+    const games = ensureGamesCache();
+    let changed = false;
+    summaries.forEach((summary) => {
+      if (!summary?.id) return;
+      const id = String(summary.id);
+      const prev = games[id] || {};
+      const next = {
+        ...prev,
+        id,
+        name: summary.name ?? prev.name,
+        isDemo: summary.isDemo ?? prev.isDemo,
+        demoOnly: summary.demoOnly ?? prev.demoOnly,
+        status: summary.status ?? prev.status,
+        hostClientId: summary.hostClientId ?? prev.hostClientId,
+        hostLabel: summary.hostLabel ?? prev.hostLabel,
+        createdAt: summary.createdAt ?? prev.createdAt,
+        updatedAt: summary.updatedAt ?? prev.updatedAt,
+        hostLastActiveAt: summary.hostLastActiveAt ?? prev.hostLastActiveAt,
+        inactivityEndsAt: summary.inactivityEndsAt ?? prev.inactivityEndsAt,
+        digitalCardsEnabled: "digitalCardsEnabled" in summary
+          ? !!summary.digitalCardsEnabled
+          : !!prev.digitalCardsEnabled,
+        participantCount: summary.participantCount ?? prev.participantCount,
+        calledCount: summary.calledCount,
+        poolCount: summary.poolCount,
+      };
+      if (JSON.stringify(prev) !== JSON.stringify(next)) {
+        games[id] = next;
+        changed = true;
+      }
+    });
+    return changed;
+  }
+
+  function mergeSingleRemoteGame(gameId, game) {
+    if (!gameId || !game || typeof game !== "object") return false;
+    const games = ensureGamesCache();
+    const merged = mergeGameMaps(games, { [gameId]: game });
+    if (!gamesChanged(merged, games)) return false;
+    gamesCache = merged;
+    remoteGameUpdatedAt = gameTimestamp(game);
+    try {
+      localStorage.setItem(GAMES_KEY, JSON.stringify(gamesCache));
+    } catch (_) { /* storage full */ }
+    return true;
+  }
+
+  async function fetchJsonWithRevision(url, options = {}) {
+    const headers = {
+      Accept: "application/json",
+      ...(options.headers || {}),
+    };
+    if (remoteRevision > 0) headers["If-None-Match"] = String(remoteRevision);
+    const res = await fetch(url, {
+      cache: "no-store",
+      ...options,
+      headers,
+    });
+    if (res.status === 304) return { notModified: true };
+    if (!res.ok) {
+      if (res.status === 404) remoteSyncEnabled = false;
+      return { notModified: false, ok: false, status: res.status };
+    }
+    const etag = res.headers.get("ETag");
+    if (etag) remoteRevision = Number(etag) || remoteRevision;
+    const data = await res.json();
+    applyRemoteMeta(data);
+    if (typeof data.revision === "number") remoteRevision = data.revision;
+    return { notModified: false, ok: true, data };
+  }
+
+  async function fetchRemoteGamesFull() {
     if (!remoteSyncEnabled) return null;
+    const base = getSyncBaseUrl();
+    if (!base) return null;
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
-        const res = await fetch(`${SYNC_URL}?t=${Date.now()}`, {
-          cache: "no-store",
-          headers: { Accept: "application/json" },
-        });
-        if (!res.ok) {
-          if (res.status === 404) remoteSyncEnabled = false;
-          return null;
-        }
-        const data = await res.json();
-        applyRemoteQuota(data);
-        return data?.games && typeof data.games === "object" ? data.games : null;
+        const result = await fetchJsonWithRevision(`${base}/api/games?t=${Date.now()}`);
+        if (result.notModified) return { notModified: true };
+        if (!result.ok) return null;
+        const games = result.data?.games;
+        return games && typeof games === "object" ? games : null;
       } catch (_) {
         if (attempt < 2) {
           await new Promise((resolve) => setTimeout(resolve, 400 * (attempt + 1)));
@@ -750,6 +852,58 @@
       }
     }
     return null;
+  }
+
+  async function fetchRemoteSummary() {
+    if (!remoteSyncEnabled) return { notModified: false, changed: false };
+    const base = getSyncBaseUrl();
+    if (!base) return { notModified: false, changed: false };
+    try {
+      const result = await fetchJsonWithRevision(`${base}/api/games/summary?t=${Date.now()}`);
+      if (result.notModified) return { notModified: true, changed: false };
+      if (!result.ok) return { notModified: false, changed: false };
+      const changed = mergeSummaryIntoCache(result.data?.summaries);
+      if (changed) {
+        try {
+          localStorage.setItem(GAMES_KEY, JSON.stringify(gamesCache));
+        } catch (_) { /* storage full */ }
+      }
+      return { notModified: false, changed };
+    } catch (_) {
+      return { notModified: false, changed: false };
+    }
+  }
+
+  async function fetchRemoteGame(gameId, sinceUpdatedAt = 0) {
+    if (!remoteSyncEnabled || !gameId) return { notModified: false, changed: false };
+    const base = getSyncBaseUrl();
+    if (!base) return { notModified: false, changed: false };
+    const params = new URLSearchParams({ t: String(Date.now()) });
+    if (sinceUpdatedAt > 0) params.set("since", String(sinceUpdatedAt));
+    if (remoteRevision > 0) params.set("revision", String(remoteRevision));
+    try {
+      const result = await fetchJsonWithRevision(`${base}/api/games/${encodeURIComponent(gameId)}?${params}`);
+      if (result.notModified) return { notModified: true, changed: false };
+      if (!result.ok) return { notModified: false, changed: false };
+      const data = result.data;
+      if (data?.changed === false) {
+        if (typeof data.updatedAt === "number") remoteGameUpdatedAt = data.updatedAt;
+        return { notModified: false, changed: false };
+      }
+      if (data?.changed && data.game) {
+        const didChange = mergeSingleRemoteGame(String(gameId), data.game);
+        return { notModified: false, changed: didChange };
+      }
+      return { notModified: false, changed: false };
+    } catch (_) {
+      return { notModified: false, changed: false };
+    }
+  }
+
+  async function fetchRemoteGames() {
+    const remote = await fetchRemoteGamesFull();
+    if (remote && remote.notModified) return { notModified: true };
+    return remote;
   }
 
   async function pushGamesToServer(games) {
@@ -767,7 +921,7 @@
         data = null;
       }
       if (res.status === 429 && data?.error === "IP_GAME_LIMIT") {
-        applyRemoteQuota(data);
+        applyRemoteMeta(data);
         if (data.games) mergeServerGames(data.games);
         return { ok: false, error: "IP_GAME_LIMIT", max: data.maxActiveGamesPerIp ?? remoteQuota.maxActiveGamesPerIp };
       }
@@ -775,8 +929,11 @@
         if (res.status === 404) remoteSyncEnabled = false;
         return { ok: false };
       }
-      applyRemoteQuota(data);
+      applyRemoteMeta(data);
       if (data?.games) mergeServerGames(data.games);
+      if (currentGameId && gamesCache?.[currentGameId]) {
+        remoteGameUpdatedAt = gameTimestamp(gamesCache[currentGameId]);
+      }
       return { ok: true };
     } catch (_) {
       return { ok: false };
@@ -787,15 +944,51 @@
     if (syncInFlight) return syncInFlight;
     syncInFlight = (async () => {
       const remote = await fetchRemoteGames();
+      if (remote && remote.notModified) return false;
       if (!remote) return false;
       const local = ensureGamesCache();
       const merged = mergeGameMaps(local, remote);
       applyGameTimeouts(merged);
       if (!gamesChanged(merged, gamesCache)) return false;
       gamesCache = merged;
+      remoteGameUpdatedAt = gameTimestamp(gamesCache[currentGameId]) || remoteGameUpdatedAt;
       try {
         localStorage.setItem(GAMES_KEY, JSON.stringify(gamesCache));
       } catch (_) { /* storage full */ }
+      refreshUIAfterSync();
+      return true;
+    })().finally(() => {
+      syncInFlight = null;
+    });
+    return syncInFlight;
+  }
+
+  async function syncLobbyFromRemote() {
+    if (syncInFlight) return syncInFlight;
+    syncInFlight = (async () => {
+      const result = await fetchRemoteSummary();
+      if (result.notModified) return false;
+      applyGameTimeouts(gamesCache);
+      if (!result.changed) return false;
+      refreshUIAfterSync();
+      return true;
+    })().finally(() => {
+      syncInFlight = null;
+    });
+    return syncInFlight;
+  }
+
+  async function syncCurrentGameFromRemote() {
+    if (!currentGameId || syncInFlight) {
+      if (syncInFlight) return syncInFlight;
+      return false;
+    }
+    syncInFlight = (async () => {
+      const since = remoteGameUpdatedAt || gameTimestamp(gamesCache?.[currentGameId]) || 0;
+      const result = await fetchRemoteGame(currentGameId, since);
+      if (result.notModified) return false;
+      applyGameTimeouts(gamesCache);
+      if (!result.changed) return false;
       refreshUIAfterSync();
       return true;
     })().finally(() => {
@@ -1092,7 +1285,7 @@
       alert(tr("bingo.alert_claim_card_fail"));
       return;
     }
-    await syncFromRemote();
+    await syncCurrentGameFromRemote();
     const game = loadAllGames()[currentGameId];
     if (game) applyGameState(game);
     renderPlayerCard();
@@ -1108,7 +1301,7 @@
       alert(tr("bingo.alert_claim_bingo_fail"));
       return;
     }
-    await syncFromRemote();
+    await syncCurrentGameFromRemote();
     const game = loadAllGames()[currentGameId];
     if (game) {
       applyGameState(game);
@@ -1318,6 +1511,7 @@
 
   function getGameParticipantCount(game) {
     if (!game?.digitalCardsEnabled) return null;
+    if (typeof game.participantCount === "number") return game.participantCount;
     return Object.values(game.spectatorCards || {}).filter((entry) => entry?.playerCard?.length).length;
   }
 
@@ -1637,8 +1831,8 @@
 
   function formatGameListMeta(game) {
     const host = escapeHtml(game.hostLabel || getHostLabel());
-    const called = game.called.length;
-    const poolLeft = game.pool.length;
+    const called = getCalledCount(game);
+    const poolLeft = getPoolCount(game);
     const now = Date.now();
     const lastActive = Number(game.hostLastActiveAt || game.updatedAt || game.createdAt || 0);
 
@@ -1667,7 +1861,7 @@
       li.className = demo ? "game-list-item demo-game" : "game-list-item";
       const isOwner = !demo && game.hostClientId === getClientId();
       const meta = demo
-        ? tr("bingo.game_meta_demo", { host: escapeHtml(game.hostLabel || "Portal Server"), called: game.called.length, pool: game.pool.length })
+        ? tr("bingo.game_meta_demo", { host: escapeHtml(game.hostLabel || "Portal Server"), called: getCalledCount(game), pool: getPoolCount(game) })
         : formatGameListMeta(game);
       const players = formatGameParticipantCount(game);
       li.innerHTML = `
@@ -1849,6 +2043,7 @@
 
   async function showLobby(noticeMessage) {
     stopSpectatorPoll();
+    stopHostGamePoll();
     stopDemoCountdownTimer();
     stopHostInactivityTimer();
     currentGameId = null;
@@ -1860,7 +2055,7 @@
     if (lobbyEl) lobbyEl.classList.remove("hidden");
     if (gameWrapEl) gameWrapEl.classList.remove("active");
 
-    await syncFromRemote();
+    await syncLobbyFromRemote();
     const displayActive = getActiveGames(loadAllGames());
     if (watchPanel) watchPanel.hidden = displayActive.length === 0;
     updateLobbyUI();
@@ -1873,7 +2068,7 @@
 
   async function enterGame(gameId, mode) {
     hideResumeModal();
-    await syncFromRemote();
+    await fetchRemoteGame(gameId, 0);
     const games = loadAllGames();
     const game = games[gameId];
     if (!game) {
@@ -1919,6 +2114,7 @@
     currentMode = mode;
     saveSession(gameId, mode);
     applyGameState(game);
+    remoteGameUpdatedAt = gameTimestamp(game);
     resetCombo();
 
     document.body.classList.toggle("spectator-mode", mode === "spectator");
@@ -1949,6 +2145,7 @@
       stopSpectatorPoll();
       stopDemoCountdownTimer();
       startHostInactivityTimer();
+      startHostGamePoll();
       void pushHostGameState({});
     }
     updateHostQrCode();
@@ -2145,12 +2342,20 @@
       : tr("bingo.game_finished_all");
   }
 
+  function getSpectatorPollDelayMs() {
+    const game = loadAllGames()[currentGameId];
+    if (!game) return SPECTATOR_POLL_SLOW_MS;
+    if (game.liveDraw || game.hasLiveDraw || spectatorAwaitingDrawResult) return SPECTATOR_POLL_FAST_MS;
+    if (game.pendingWinner) return SPECTATOR_POLL_MED_MS;
+    return SPECTATOR_POLL_SLOW_MS;
+  }
+
   function startLobbyPoll() {
     stopLobbyPoll();
     lobbyPollTimer = setInterval(async () => {
-      await syncFromRemote();
+      await syncLobbyFromRemote();
       updateLobbyUI();
-    }, SYNC_POLL_MS);
+    }, LOBBY_POLL_MS);
   }
 
   function stopLobbyPoll() {
@@ -2162,16 +2367,36 @@
 
   function startSpectatorPoll() {
     stopSpectatorPoll();
-    spectatorPollTimer = setInterval(async () => {
-      await syncFromRemote();
+    const tick = async () => {
+      if (currentMode !== "spectator" || !currentGameId) return;
+      await syncCurrentGameFromRemote();
       void refreshSpectatorView();
-    }, SPECTATOR_POLL_MS);
+      spectatorPollTimer = setTimeout(tick, getSpectatorPollDelayMs());
+    };
+    spectatorPollTimer = setTimeout(tick, getSpectatorPollDelayMs());
   }
 
   function stopSpectatorPoll() {
     if (spectatorPollTimer) {
-      clearInterval(spectatorPollTimer);
+      clearTimeout(spectatorPollTimer);
       spectatorPollTimer = null;
+    }
+  }
+
+  function startHostGamePoll() {
+    stopHostGamePoll();
+    const tick = async () => {
+      if (currentMode !== "host" || !currentGameId) return;
+      await syncCurrentGameFromRemote();
+      hostGamePollTimer = setTimeout(tick, HOST_GAME_POLL_MS);
+    };
+    hostGamePollTimer = setTimeout(tick, HOST_GAME_POLL_MS);
+  }
+
+  function stopHostGamePoll() {
+    if (hostGamePollTimer) {
+      clearTimeout(hostGamePollTimer);
+      hostGamePollTimer = null;
     }
   }
 
@@ -2281,7 +2506,8 @@
 
   BROADCAST?.addEventListener("message", (e) => {
     if (e.data?.type !== "sync") return;
-    syncFromRemote();
+    if (currentGameId) void syncCurrentGameFromRemote();
+    else void syncLobbyFromRemote();
   });
 
   async function bootstrap() {
