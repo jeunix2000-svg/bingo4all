@@ -143,7 +143,7 @@ function mergeGames(base, incoming, clientIp, posterClientId) {
 
 function isUserGameActive(game) {
   if (!game || typeof game !== 'object') return false;
-  if (game.status === 'aborted') return false;
+  if (game.status === 'aborted' || game.status === 'finished') return false;
   if (isDemoGame(game)) return game.status === 'active';
   return (Array.isArray(game.pool) && game.pool.length > 0) || !!game.liveDraw;
 }

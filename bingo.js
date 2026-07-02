@@ -65,6 +65,8 @@
   const watchEmptyEl = document.getElementById("watch-empty");
   const lobbyLimitText = document.getElementById("lobby-limit-text");
   const backLobbyBtn = document.getElementById("back-lobby-btn");
+  const exitGameBtn = document.getElementById("exit-game-btn");
+  const endCurrentGameBtn = document.getElementById("end-current-game-btn");
   const gameBarName = document.getElementById("game-bar-name");
   const gameBarMeta = document.getElementById("game-bar-meta");
   const spectatorBadge = document.getElementById("spectator-badge");
@@ -536,9 +538,10 @@
 
   function isGameActive(game) {
     if (!game || isGameAborted(game)) return false;
+    if (game.status === "finished") return false;
     if (isDemoGame(game)) return game.status === "active";
-    if (Array.isArray(game.pool) && game.pool.length > 0) return true;
     if (game.liveDraw || game.hasLiveDraw) return true;
+    if (Array.isArray(game.pool) && game.pool.length > 0) return true;
     if (typeof game.poolCount === "number" && game.poolCount > 0) return true;
     return false;
   }
@@ -796,7 +799,8 @@
           : !!prev.digitalCardsEnabled,
         participantCount: Math.max(prevCardCount, summaryCount, prev.participantCount ?? 0),
         calledCount: summary.calledCount,
-        poolCount: summary.poolCount,
+        poolCount: summary.status === "finished" ? 0 : summary.poolCount,
+        hasLiveDraw: summary.status === "finished" ? false : !!summary.hasLiveDraw,
       };
       if (JSON.stringify(prev) !== JSON.stringify(next)) {
         games[id] = next;
@@ -1565,6 +1569,13 @@
     updateGameBar();
   }
 
+  function updateGameBarActions() {
+    const game = currentGameId ? loadAllGames()[currentGameId] : null;
+    const demo = isDemoGame(game);
+    if (exitGameBtn) exitGameBtn.hidden = currentMode !== "spectator" || !currentGameId;
+    if (endCurrentGameBtn) endCurrentGameBtn.hidden = currentMode !== "host" || !currentGameId || demo;
+  }
+
   function updateGameBar() {
     if (!gameBarName || !currentGameId) return;
     const games = loadAllGames();
@@ -1579,6 +1590,7 @@
         n: count === null ? "—" : count,
       });
     }
+    updateGameBarActions();
   }
 
   function previewBall(num) {
@@ -1903,7 +1915,10 @@
       li.querySelector(".btn-end-game")?.addEventListener("click", (e) => {
         e.stopPropagation();
         if (!confirm(tr("bingo.confirm_end_game"))) return;
-        endGameByHost(game.id);
+        void (async () => {
+          const ok = await endGameByHost(game.id);
+          if (!ok) alert(tr("bingo.alert_end_game_fail"));
+        })();
       });
       li.addEventListener("click", () => {
         void enterGame(game.id, isOwner ? "host" : "spectator");
@@ -1964,11 +1979,11 @@
     resumeModal?.classList.add("open");
   }
 
-  function endGameByHost(gameId) {
+  async function endGameByHost(gameId) {
     const games = loadAllGames();
     const game = games[gameId];
     if (!game || isDemoGame(game) || !isGameOwner(game)) return false;
-    if (isGameAborted(game) || (!isGameActive(game) && game.status === "finished")) return false;
+    if (isGameAborted(game) || game.status === "finished") return false;
 
     if (!game.hostClientId) game.hostClientId = getClientId();
 
@@ -1977,10 +1992,16 @@
     game.endedAt = Date.now();
     game.updatedAt = Date.now();
     game.pool = [];
+    game.poolCount = 0;
+    game.hasLiveDraw = false;
     game.liveDraw = null;
     game.inactivityEndsAt = null;
     games[gameId] = game;
-    void saveAllGames(games);
+    try {
+      await saveAllGames(games);
+    } catch (_) {
+      return false;
+    }
     clearSessionIfGame(gameId);
 
     const wasInGame = currentGameId === gameId;
@@ -1990,13 +2011,33 @@
       drawing = false;
       activeDraw = null;
       stopSpectatorPoll();
+      stopHostGamePoll();
       document.body.classList.remove("spectator-mode");
       if (spectatorBadge) spectatorBadge.hidden = true;
-      void showLobby(tr("bingo.notice_game_ended"));
+      await showLobby(tr("bingo.notice_game_ended"));
     } else {
+      await syncLobbyFromRemote();
       updateLobbyUI();
     }
     return true;
+  }
+
+  async function leaveCurrentGame() {
+    if (!currentGameId || currentMode !== "spectator") {
+      await showLobby();
+      return;
+    }
+    clearSession();
+    await showLobby();
+  }
+
+  async function endCurrentGame() {
+    if (!currentGameId || currentMode !== "host") return;
+    const game = loadAllGames()[currentGameId];
+    if (!game || isDemoGame(game)) return;
+    if (!confirm(tr("bingo.confirm_end_game"))) return;
+    const ok = await endGameByHost(currentGameId);
+    if (!ok) alert(tr("bingo.alert_end_game_fail"));
   }
 
   function abortGame(gameId, { notifyHost = false } = {}) {
@@ -2094,6 +2135,7 @@
     if (noticeMessage) showLobbyNotice(noticeMessage);
     else showLobbyNotice(null);
     updateHostQrCode();
+    updateGameBarActions();
   }
 
   async function enterGame(gameId, mode) {
@@ -2179,6 +2221,7 @@
       void pushHostGameState({});
     }
     updateHostQrCode();
+    updateGameBarActions();
   }
 
   function startNewGame() {
@@ -2522,6 +2565,13 @@
       }
       await showLobby();
     })();
+  });
+  exitGameBtn?.addEventListener("click", () => {
+    if (!confirm(tr("bingo.confirm_exit_game"))) return;
+    void leaveCurrentGame();
+  });
+  endCurrentGameBtn?.addEventListener("click", () => {
+    void endCurrentGame();
   });
 
   document.addEventListener("keydown", (e) => {
