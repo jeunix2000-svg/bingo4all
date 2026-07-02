@@ -561,6 +561,13 @@
     return session?.mode === "host" && game?.hostClientId === getClientId();
   }
 
+  function isGameOwner(game) {
+    if (!game || isDemoGame(game)) return false;
+    if (game.hostClientId === getClientId()) return true;
+    const session = loadSession();
+    return session?.mode === "host" && String(session.gameId) === String(game.id);
+  }
+
   function shuffle(arr) {
     const a = [...arr];
     for (let i = a.length - 1; i > 0; i--) {
@@ -778,7 +785,7 @@
         isDemo: summary.isDemo ?? prev.isDemo,
         demoOnly: summary.demoOnly ?? prev.demoOnly,
         status: summary.status ?? prev.status,
-        hostClientId: summary.hostClientId ?? prev.hostClientId,
+        hostClientId: summary.hostClientId || prev.hostClientId,
         hostLabel: summary.hostLabel ?? prev.hostLabel,
         createdAt: summary.createdAt ?? prev.createdAt,
         updatedAt: summary.updatedAt ?? prev.updatedAt,
@@ -1876,7 +1883,7 @@
       const li = document.createElement("li");
       const demo = isDemoGame(game);
       li.className = demo ? "game-list-item demo-game" : "game-list-item";
-      const isOwner = !demo && game.hostClientId === getClientId();
+      const isOwner = isGameOwner(game);
       const meta = demo
         ? tr("bingo.game_meta_demo", { host: escapeHtml(game.hostLabel || "Portal Server"), called: getCalledCount(game), pool: getPoolCount(game) })
         : formatGameListMeta(game);
@@ -1960,8 +1967,10 @@
   function endGameByHost(gameId) {
     const games = loadAllGames();
     const game = games[gameId];
-    if (!game || isDemoGame(game) || game.hostClientId !== getClientId()) return false;
+    if (!game || isDemoGame(game) || !isGameOwner(game)) return false;
     if (isGameAborted(game) || (!isGameActive(game) && game.status === "finished")) return false;
+
+    if (!game.hostClientId) game.hostClientId = getClientId();
 
     game.status = "finished";
     game.endReason = "host";
@@ -2073,6 +2082,10 @@
     if (gameWrapEl) gameWrapEl.classList.remove("active");
 
     await syncLobbyFromRemote();
+    const session = loadSession();
+    if (session?.mode === "host" && session.gameId) {
+      await fetchRemoteGame(session.gameId, 0);
+    }
     const displayActive = getActiveGames(loadAllGames());
     if (watchPanel) watchPanel.hidden = displayActive.length === 0;
     updateLobbyUI();
@@ -2503,8 +2516,12 @@
     if (currentMode === "host" && drawing) {
       if (!confirm(tr("bingo.confirm_leave_drawing"))) return;
     }
-    persistCurrentGame();
-    showLobby();
+    void (async () => {
+      if (currentMode === "host" && currentGameId) {
+        await pushHostGameState({ liveDraw: null });
+      }
+      await showLobby();
+    })();
   });
 
   document.addEventListener("keydown", (e) => {

@@ -92,7 +92,7 @@ function mergeSpectatorCards(existing, incoming) {
   return { ...prev, ...incoming };
 }
 
-function mergeGames(base, incoming, clientIp) {
+function mergeGames(base, incoming, clientIp, posterClientId) {
   const preservedDemo = base[DEMO_GAME_ID];
   const out = { ...base };
   const rejectedNewIds = [];
@@ -111,7 +111,11 @@ function mergeGames(base, incoming, clientIp) {
         rejectedNewIds.push(gid);
         continue;
       }
-      const stored = { ...game, hostIp: clientIp };
+      const stored = {
+        ...game,
+        hostIp: clientIp,
+        hostClientId: game.hostClientId || posterClientId || undefined,
+      };
       out[gid] = stored;
       if (isUserGameActive(stored)) activeForIp += 1;
       continue;
@@ -121,6 +125,8 @@ function mergeGames(base, incoming, clientIp) {
       out[gid] = {
         ...game,
         hostIp: existing.hostIp || game.hostIp,
+        hostClientId: game.hostClientId || existing.hostClientId,
+        hostLabel: game.hostLabel || existing.hostLabel,
         digitalCardsEnabled: 'digitalCardsEnabled' in game
           ? !!game.digitalCardsEnabled
           : !!existing.digitalCardsEnabled,
@@ -441,9 +447,10 @@ app.post(['/', '/api/games'], (req, res) => {
     return res.status(400).json({ error: 'INVALID_PAYLOAD' });
   }
   const clientIp = getClientIp(req);
+  const posterClientId = req.body?.clientId ? String(req.body.clientId) : '';
   const base = loadGames();
   prepareGames(base);
-  const { games: merged, rejectedNewIds } = mergeGames(base, incoming, clientIp);
+  const { games: merged, rejectedNewIds } = mergeGames(base, incoming, clientIp, posterClientId);
   const prepared = prepareGames(merged);
 
   if (rejectedNewIds.length > 0) {
