@@ -619,6 +619,31 @@
     return { ...prev, ...incoming };
   }
 
+  function mergeSpectatorSideFromRemote(prev, game) {
+    if (!prev || !game || typeof game !== "object") return null;
+    const patch = {};
+    if ("spectatorCards" in game) patch.spectatorCards = { ...(game.spectatorCards || {}) };
+    if ("pendingWinner" in game) patch.pendingWinner = game.pendingWinner;
+    if (game.confirmedWinners) patch.confirmedWinners = game.confirmedWinners;
+    if (!Object.keys(patch).length) return null;
+
+    const next = { ...prev, ...patch };
+    next.participantCount = countDigitalParticipants(next);
+    const before = JSON.stringify({
+      spectatorCards: prev.spectatorCards || {},
+      pendingWinner: prev.pendingWinner ?? null,
+      confirmedWinners: prev.confirmedWinners || [],
+      participantCount: prev.participantCount ?? null,
+    });
+    const after = JSON.stringify({
+      spectatorCards: next.spectatorCards || {},
+      pendingWinner: next.pendingWinner ?? null,
+      confirmedWinners: next.confirmedWinners || [],
+      participantCount: next.participantCount ?? null,
+    });
+    return before === after ? null : next;
+  }
+
   function mergeGameMaps(base, incoming) {
     const merged = { ...base };
     if (!incoming || typeof incoming !== "object") return merged;
@@ -629,18 +654,22 @@
         merged[gid] = game;
         return;
       }
-      if (!merged[gid] || gameTimestamp(game) >= gameTimestamp(merged[gid])) {
-        const prev = merged[gid] || {};
+      const prev = merged[gid] || {};
+      if (!merged[gid] || gameTimestamp(game) >= gameTimestamp(prev)) {
         merged[gid] = {
           ...prev,
           ...game,
-        spectatorCards: "spectatorCards" in game
-          ? { ...(game.spectatorCards || {}) }
-          : (prev.spectatorCards || {}),
+          spectatorCards: "spectatorCards" in game
+            ? { ...(game.spectatorCards || {}) }
+            : (prev.spectatorCards || {}),
           pendingWinner: "pendingWinner" in game ? game.pendingWinner : (prev.pendingWinner ?? null),
           confirmedWinners: game.confirmedWinners ?? prev.confirmedWinners ?? [],
         };
+        return;
       }
+
+      const spectatorPatch = mergeSpectatorSideFromRemote(prev, game);
+      if (spectatorPatch) merged[gid] = spectatorPatch;
     });
     return merged;
   }
@@ -722,6 +751,19 @@
     window.stopInactivityFinale?.();
   }
 
+  function refreshHostSyncedMeta() {
+    if (currentMode !== "host" || !currentGameId) return;
+    const game = loadAllGames()[currentGameId];
+    if (!game) return;
+    spectatorCards = game.spectatorCards || {};
+    pendingWinner = game.pendingWinner ?? null;
+    confirmedWinners = game.confirmedWinners || [];
+    updateParticipantDisplay();
+    updateDigitalCardUI();
+    updateWinnerUI();
+    updateGameBar();
+  }
+
   function refreshUIAfterSync() {
     if (currentGameId) checkCurrentGameStillValid();
     if (currentMode === "spectator") void refreshSpectatorView();
@@ -729,8 +771,7 @@
     updateHostQrCode();
     if (currentMode === "host" && currentGameId) {
       updateInactivityModal(loadAllGames()[currentGameId]);
-      updateDigitalCardUI();
-      updateWinnerUI();
+      refreshHostSyncedMeta();
     }
   }
 
