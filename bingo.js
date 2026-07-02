@@ -1569,11 +1569,28 @@
     updateGameBar();
   }
 
+  function barActionLabel(key, fallback) {
+    const text = tr(key);
+    return text === key ? fallback : text;
+  }
+
+  function setBarActionButton(btn, visible, labelKey, fallback) {
+    if (!btn) return;
+    btn.textContent = barActionLabel(labelKey, fallback);
+    if (visible) btn.removeAttribute("hidden");
+    else btn.setAttribute("hidden", "");
+  }
+
   function updateGameBarActions() {
     const game = currentGameId ? loadAllGames()[currentGameId] : null;
     const demo = isDemoGame(game);
-    if (exitGameBtn) exitGameBtn.hidden = currentMode !== "spectator" || !currentGameId;
-    if (endCurrentGameBtn) endCurrentGameBtn.hidden = currentMode !== "host" || !currentGameId || demo;
+    const inGame = !!currentGameId && !!gameWrapEl?.classList.contains("active");
+    const ownerHost = currentMode === "host" && isGameOwner(game) && !demo;
+    const showExit = inGame && (currentMode === "spectator" || (currentMode === "host" && !ownerHost));
+    const showEnd = inGame && ownerHost;
+
+    setBarActionButton(exitGameBtn, showExit, "bingo.exit_game", "退出当前游戏");
+    setBarActionButton(endCurrentGameBtn, showEnd, "bingo.end_current_game", "结束当前游戏");
   }
 
   function updateGameBar() {
@@ -2034,7 +2051,7 @@
   async function endCurrentGame() {
     if (!currentGameId || currentMode !== "host") return;
     const game = loadAllGames()[currentGameId];
-    if (!game || isDemoGame(game)) return;
+    if (!game || isDemoGame(game) || !isGameOwner(game)) return;
     if (!confirm(tr("bingo.confirm_end_game"))) return;
     const ok = await endGameByHost(currentGameId);
     if (!ok) alert(tr("bingo.alert_end_game_fail"));
@@ -2648,6 +2665,7 @@
         updateDigitalCardUI();
         updateWinnerUI();
       }
+      updateGameBarActions();
     }
     if (pendingResumeSession) {
       const game = loadAllGames()[pendingResumeSession.gameId];

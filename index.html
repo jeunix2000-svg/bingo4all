@@ -1189,8 +1189,11 @@
     .game-bar-actions {
       display: flex;
       align-items: center;
+      justify-content: flex-end;
       gap: 0.5rem;
-      flex-shrink: 0;
+      flex: 0 0 auto;
+      flex-wrap: wrap;
+      max-width: 100%;
     }
 
     .game-bar {
@@ -1202,6 +1205,7 @@
       padding: 0.45rem 1rem;
       background: rgba(255, 215, 0, 0.06);
       border-bottom: 1px solid rgba(255, 215, 0, 0.15);
+      flex-wrap: wrap;
     }
 
     .game-bar-title {
@@ -1209,6 +1213,8 @@
       font-weight: 700;
       color: #ffd700;
       letter-spacing: 0.04em;
+      min-width: 0;
+      flex: 1 1 12rem;
     }
 
     #game-bar-name {
@@ -1479,8 +1485,8 @@
       <div class="game-bar-title"><span id="game-bar-name">—</span><span id="game-bar-meta"></span></div>
       <div class="game-bar-actions">
         <span class="spectator-badge" id="spectator-badge" hidden data-i18n="bingo.spectator_badge">観戦モード</span>
-        <button class="btn-exit-game" id="exit-game-btn" type="button" hidden data-i18n="bingo.exit_game">退出当前游戏</button>
-        <button class="btn-end-current-game" id="end-current-game-btn" type="button" hidden data-i18n="bingo.end_current_game">结束当前游戏</button>
+        <button class="btn-exit-game" id="exit-game-btn" type="button" hidden>退出当前游戏</button>
+        <button class="btn-end-current-game" id="end-current-game-btn" type="button" hidden>结束当前游戏</button>
         <button class="btn-back-lobby" id="back-lobby-btn" type="button" data-i18n="bingo.back_lobby">ロビーに戻る</button>
       </div>
     </div>
