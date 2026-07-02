@@ -14,6 +14,12 @@ const RANGES = [
   { min: 61, max: 75 },
 ];
 
+function drawRandomFromPool(pool) {
+  if (!Array.isArray(pool) || !pool.length) return null;
+  const idx = Math.floor(Math.random() * pool.length);
+  return pool.splice(idx, 1)[0];
+}
+
 function shuffle(arr) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i -= 1) {
@@ -98,7 +104,7 @@ function advanceDemoGame(game, now = Date.now()) {
 
   if (now < Number(game.demoNextDrawAt || 0)) return false;
 
-  const num = game.pool.pop();
+  const num = drawRandomFromPool(game.pool);
   if (num == null) {
     resetDemoRound(game);
     return true;
