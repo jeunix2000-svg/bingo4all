@@ -163,6 +163,17 @@
     }
   }
 
+  function pickHostDisplayName() {
+    if (window.BINGO_HOST_NAMES?.pick) {
+      return window.BINGO_HOST_NAMES.pick(getClientId());
+    }
+    return getHostLabel();
+  }
+
+  function getDemoHostLabel() {
+    return window.BINGO_HOST_NAMES?.DEMO_LABEL || "Lucky Momo";
+  }
+
   function getDeviceLabel() {
     try {
       const host = getHostLabel();
@@ -387,11 +398,12 @@
 
   function saveSession(gameId, mode) {
     try {
+      const game = loadAllGames()[gameId];
       localStorage.setItem(SESSION_KEY, JSON.stringify({
         gameId,
         mode,
         clientId: getClientId(),
-        hostLabel: getHostLabel(),
+        hostLabel: game?.hostLabel || pickHostDisplayName(),
         updatedAt: Date.now(),
       }));
     } catch (_) { /* ignore */ }
@@ -1071,7 +1083,7 @@
           createdAt: Number(id),
           status: "active",
           hostClientId: getClientId(),
-          hostLabel: getHostLabel(),
+          hostLabel: pickHostDisplayName(),
           pool: data.pool,
           called: data.called,
           playerCard: data.playerCard || [],
@@ -1143,7 +1155,7 @@
       createdAt: now,
       status: "active",
       hostClientId: clientId,
-      hostLabel: getHostLabel(),
+      hostLabel: pickHostDisplayName(),
       updatedAt: now,
       hostLastActiveAt: now,
       inactivityEndsAt: null,
@@ -1503,7 +1515,7 @@
       createdAt: existing.createdAt || Number(currentGameId),
       status: "status" in patch ? patch.status : (finished ? "finished" : (existing.status || "active")),
       hostClientId: existing.hostClientId || getClientId(),
-      hostLabel: existing.hostLabel || getHostLabel(),
+      hostLabel: existing.hostLabel || pickHostDisplayName(),
       updatedAt: Date.now(),
       hostLastActiveAt: Date.now(),
       inactivityEndsAt: null,
@@ -1935,7 +1947,7 @@
   }
 
   function formatGameListMeta(game) {
-    const host = escapeHtml(game.hostLabel || getHostLabel());
+    const host = escapeHtml(game.hostLabel || pickHostDisplayName());
     const called = getCalledCount(game);
     const poolLeft = getPoolCount(game);
     const now = Date.now();
@@ -1966,7 +1978,7 @@
       li.className = demo ? "game-list-item demo-game" : "game-list-item";
       const isOwner = isGameOwner(game);
       const meta = demo
-        ? tr("bingo.game_meta_demo", { host: escapeHtml(game.hostLabel || "Portal Server"), called: getCalledCount(game), pool: getPoolCount(game) })
+        ? tr("bingo.game_meta_demo", { host: escapeHtml(game.hostLabel || getDemoHostLabel()), called: getCalledCount(game), pool: getPoolCount(game) })
         : formatGameListMeta(game);
       const players = formatGameParticipantCount(game);
       li.innerHTML = `

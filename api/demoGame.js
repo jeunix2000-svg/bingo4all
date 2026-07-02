@@ -51,7 +51,7 @@ function createDemoGame() {
     demoOnly: true,
     status: 'active',
     hostClientId: DEMO_HOST_ID,
-    hostLabel: 'Bingo4All Server',
+    hostLabel: 'Lucky Momo',
     createdAt: now,
     updatedAt: now,
     round: 1,
@@ -129,6 +129,10 @@ function ensureDemoGame(games) {
     return true;
   }
   const game = games[DEMO_GAME_ID];
+  if (game.hostLabel !== 'Lucky Momo') {
+    game.hostLabel = 'Lucky Momo';
+    return true;
+  }
   if (game.status !== 'active') {
     games[DEMO_GAME_ID] = createDemoGame();
     return true;
