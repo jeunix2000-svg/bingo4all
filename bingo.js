@@ -69,7 +69,7 @@
   const endCurrentGameBtn = document.getElementById("end-current-game-btn");
   const gameBarName = document.getElementById("game-bar-name");
   const gameBarMeta = document.getElementById("game-bar-meta");
-  const spectatorBadge = document.getElementById("spectator-badge");
+  const gameBarStatus = document.getElementById("game-bar-status");
   const comboEl = document.getElementById("combo-display");
   const resumeModal = document.getElementById("resume-modal");
   const resumeGameName = document.getElementById("resume-game-name");
@@ -634,7 +634,9 @@
         merged[gid] = {
           ...prev,
           ...game,
-          spectatorCards: mergeSpectatorCards(prev.spectatorCards, game.spectatorCards),
+        spectatorCards: "spectatorCards" in game
+          ? { ...(game.spectatorCards || {}) }
+          : (prev.spectatorCards || {}),
           pendingWinner: "pendingWinner" in game ? game.pendingWinner : (prev.pendingWinner ?? null),
           confirmedWinners: game.confirmedWinners ?? prev.confirmedWinners ?? [],
         };
@@ -780,7 +782,6 @@
       const id = String(summary.id);
       const prev = games[id] || {};
       const prevCardCount = countDigitalParticipants(prev);
-      const summaryCount = typeof summary.participantCount === "number" ? summary.participantCount : 0;
       const next = {
         ...prev,
         id,
@@ -797,7 +798,9 @@
         digitalCardsEnabled: "digitalCardsEnabled" in summary
           ? !!summary.digitalCardsEnabled
           : !!prev.digitalCardsEnabled,
-        participantCount: Math.max(prevCardCount, summaryCount, prev.participantCount ?? 0),
+        participantCount: typeof summary.participantCount === "number"
+          ? summary.participantCount
+          : (prev.participantCount ?? prevCardCount),
         calledCount: summary.calledCount,
         poolCount: summary.status === "finished" ? 0 : summary.poolCount,
         hasLiveDraw: summary.status === "finished" ? false : !!summary.hasLiveDraw,
@@ -1569,6 +1572,13 @@
     updateGameBar();
   }
 
+  function setSpectatorBarStatus(visible) {
+    if (gameBarStatus) {
+      if (visible) gameBarStatus.removeAttribute("hidden");
+      else gameBarStatus.setAttribute("hidden", "");
+    }
+  }
+
   function barActionLabel(key, fallback) {
     const text = tr(key);
     return text === key ? fallback : text;
@@ -1591,6 +1601,7 @@
 
     setBarActionButton(exitGameBtn, showExit, "bingo.exit_game", "退出当前游戏");
     setBarActionButton(endCurrentGameBtn, showEnd, "bingo.end_current_game", "结束当前游戏");
+    setSpectatorBarStatus(inGame && currentMode === "spectator");
   }
 
   function updateGameBar() {
@@ -2030,7 +2041,8 @@
       stopSpectatorPoll();
       stopHostGamePoll();
       document.body.classList.remove("spectator-mode");
-      if (spectatorBadge) spectatorBadge.hidden = true;
+      setSpectatorBarStatus(false);
+      setSpectatorBarStatus(false);
       await showLobby(tr("bingo.notice_game_ended"));
     } else {
       await syncLobbyFromRemote();
@@ -2044,7 +2056,21 @@
       await showLobby();
       return;
     }
+    const gameId = currentGameId;
+    await postSpectatorAction("leaveGame");
+    playerCard = [];
+    playerMarked = [];
+    spectatorCards = {};
     clearSession();
+    if (gamesCache?.[gameId]) {
+      const cards = { ...(gamesCache[gameId].spectatorCards || {}) };
+      delete cards[getClientId()];
+      gamesCache[gameId].spectatorCards = cards;
+      gamesCache[gameId].participantCount = countDigitalParticipants(gamesCache[gameId]);
+      try {
+        localStorage.setItem(GAMES_KEY, JSON.stringify(gamesCache));
+      } catch (_) { /* storage full */ }
+    }
     await showLobby();
   }
 
@@ -2079,7 +2105,8 @@
       activeDraw = null;
       stopSpectatorPoll();
       document.body.classList.remove("spectator-mode");
-      if (spectatorBadge) spectatorBadge.hidden = true;
+      setSpectatorBarStatus(false);
+      setSpectatorBarStatus(false);
     }
 
     if (wasInGame || notifyHost) {
@@ -2102,7 +2129,7 @@
     drawing = false;
     activeDraw = null;
     document.body.classList.remove("spectator-mode");
-    if (spectatorBadge) spectatorBadge.hidden = true;
+    setSpectatorBarStatus(false);
     void showLobby(message);
   }
 
@@ -2117,7 +2144,7 @@
     drawing = false;
     activeDraw = null;
     document.body.classList.remove("spectator-mode");
-    if (spectatorBadge) spectatorBadge.hidden = true;
+    setSpectatorBarStatus(false);
     void showLobby(
       wasHost
         ? tr("bingo.notice_game_aborted")
@@ -2135,7 +2162,7 @@
     drawing = false;
     activeDraw = null;
     document.body.classList.remove("spectator-mode");
-    if (spectatorBadge) spectatorBadge.hidden = true;
+    setSpectatorBarStatus(false);
     if (lobbyEl) lobbyEl.classList.remove("hidden");
     if (gameWrapEl) gameWrapEl.classList.remove("active");
 
@@ -2207,7 +2234,7 @@
     resetCombo();
 
     document.body.classList.toggle("spectator-mode", mode === "spectator");
-    if (spectatorBadge) spectatorBadge.hidden = mode !== "spectator";
+    setSpectatorBarStatus(mode === "spectator");
 
     if (lobbyEl) lobbyEl.classList.add("hidden");
     if (gameWrapEl) gameWrapEl.classList.add("active");

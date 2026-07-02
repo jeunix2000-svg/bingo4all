@@ -1135,65 +1135,80 @@
       padding: 1rem 0;
     }
 
-    .btn-back-lobby {
+    .game-bar-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.65rem;
+      flex: 0 0 auto;
+      flex-wrap: wrap;
+      max-width: 100%;
+    }
+
+    .game-bar-status {
+      display: flex;
+      align-items: center;
       flex-shrink: 0;
-      padding: 0.35rem 0.75rem;
+    }
+
+    .game-bar-buttons {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      flex-shrink: 0;
+      padding: 0.2rem;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.22);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .btn-back-lobby,
+    .btn-exit-game,
+    .btn-end-current-game {
+      flex-shrink: 0;
+      padding: 0.38rem 0.8rem;
       font-size: 0.72rem;
       font-weight: 600;
-      color: rgba(255, 255, 255, 0.7);
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 999px;
+      border-radius: 8px;
       cursor: pointer;
-      transition: background 0.15s, color 0.15s;
+      transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .btn-back-lobby {
+      color: rgba(255, 255, 255, 0.82);
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.16);
     }
 
     .btn-back-lobby:hover {
       background: rgba(255, 255, 255, 0.14);
       color: #fff;
-    }
-
-    .btn-exit-game,
-    .btn-end-current-game {
-      flex-shrink: 0;
-      padding: 0.35rem 0.75rem;
-      font-size: 0.72rem;
-      font-weight: 600;
-      border-radius: 999px;
-      cursor: pointer;
-      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      border-color: rgba(255, 255, 255, 0.24);
     }
 
     .btn-exit-game {
-      color: rgba(255, 255, 255, 0.78);
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.18);
+      color: #ffd4a8;
+      background: rgba(255, 159, 67, 0.14);
+      border: 1px solid rgba(255, 159, 67, 0.34);
     }
 
     .btn-exit-game:hover {
-      background: rgba(255, 255, 255, 0.12);
-      color: #fff;
+      background: rgba(255, 159, 67, 0.24);
+      color: #ffe8cc;
+      border-color: rgba(255, 159, 67, 0.48);
     }
 
     .btn-end-current-game {
       color: #ffb4a8;
-      background: rgba(231, 76, 60, 0.12);
-      border: 1px solid rgba(231, 76, 60, 0.35);
+      background: rgba(231, 76, 60, 0.16);
+      border: 1px solid rgba(231, 76, 60, 0.38);
     }
 
     .btn-end-current-game:hover {
-      background: rgba(231, 76, 60, 0.22);
+      background: rgba(231, 76, 60, 0.26);
       color: #ffd4cc;
-    }
-
-    .game-bar-actions {
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 0.5rem;
-      flex: 0 0 auto;
-      flex-wrap: wrap;
-      max-width: 100%;
+      border-color: rgba(231, 76, 60, 0.52);
     }
 
     .game-bar {
@@ -1229,14 +1244,32 @@
     }
 
     .spectator-badge {
-      font-size: 0.68rem;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      color: #4ecdc4;
-      padding: 0.25rem 0.6rem;
-      border-radius: 999px;
-      background: rgba(78, 205, 196, 0.12);
-      border: 1px solid rgba(78, 205, 196, 0.35);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.64rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(78, 205, 196, 0.92);
+      padding: 0.18rem 0.55rem 0.18rem 0.45rem;
+      border-radius: 4px;
+      background: rgba(78, 205, 196, 0.08);
+      border: none;
+      border-left: 3px solid rgba(78, 205, 196, 0.72);
+      box-shadow: none;
+      cursor: default;
+      user-select: none;
+    }
+
+    .spectator-badge::before {
+      content: "";
+      width: 0.42rem;
+      height: 0.42rem;
+      border-radius: 50%;
+      background: #4ecdc4;
+      box-shadow: 0 0 0 2px rgba(78, 205, 196, 0.22);
+      flex-shrink: 0;
     }
 
     #bingo-game-wrap {
@@ -1484,10 +1517,14 @@
     <div class="game-bar">
       <div class="game-bar-title"><span id="game-bar-name">—</span><span id="game-bar-meta"></span></div>
       <div class="game-bar-actions">
-        <span class="spectator-badge" id="spectator-badge" hidden data-i18n="bingo.spectator_badge">観戦モード</span>
-        <button class="btn-exit-game" id="exit-game-btn" type="button" hidden>退出当前游戏</button>
-        <button class="btn-end-current-game" id="end-current-game-btn" type="button" hidden>结束当前游戏</button>
-        <button class="btn-back-lobby" id="back-lobby-btn" type="button" data-i18n="bingo.back_lobby">ロビーに戻る</button>
+        <div class="game-bar-status" id="game-bar-status" hidden>
+          <span class="spectator-badge" id="spectator-badge" data-i18n="bingo.spectator_badge">観戦モード</span>
+        </div>
+        <div class="game-bar-buttons">
+          <button class="btn-exit-game" id="exit-game-btn" type="button" hidden>退出当前游戏</button>
+          <button class="btn-end-current-game" id="end-current-game-btn" type="button" hidden>结束当前游戏</button>
+          <button class="btn-back-lobby" id="back-lobby-btn" type="button" data-i18n="bingo.back_lobby">ロビーに戻る</button>
+        </div>
       </div>
     </div>
   <div class="bingo-screen" id="bingo-game">
