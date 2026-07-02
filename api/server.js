@@ -1,7 +1,9 @@
 /**
  * Bingo 游戏状态共享 API（Render Web Service）
- * GET  /              → 全部游戏
- * POST /              → 合并上传（按 updatedAt 取新）
+ * GET  /                    → 全部游戏（支持 ETag / revision 304）
+ * GET  /api/games/summary   → 大厅摘要列表
+ * GET  /api/games/:gameId   → 单场游戏（?since=updatedAt 无变化时 changed:false）
+ * POST /                    → 合并上传（按 updatedAt 取新）
  */
 const express = require('express');
 const fs = require('fs');
@@ -37,7 +39,8 @@ app.use((req, res, next) => {
     res.header('Vary', 'Origin');
   }
   res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Accept');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Accept, If-None-Match');
+  res.header('Access-Control-Expose-Headers', 'ETag');
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
@@ -214,6 +217,71 @@ function prepareGames(games) {
   return games;
 }
 
+function getRevision(games) {
+  let revision = 0;
+  for (const game of Object.values(games || {})) {
+    revision = Math.max(revision, gameTimestamp(game));
+  }
+  return revision;
+}
+
+function prepareGamesMaybePersist(games) {
+  const before = JSON.stringify(games);
+  prepareGames(games);
+  if (before !== JSON.stringify(games)) {
+    saveGames(games);
+    return true;
+  }
+  return false;
+}
+
+function sendNotModifiedIfMatch(req, res, revision) {
+  const clientRevision = req.header('If-None-Match') || req.query.revision;
+  if (clientRevision != null && clientRevision !== '' && String(revision) === String(clientRevision)) {
+    res.set('ETag', String(revision));
+    res.status(304).end();
+    return true;
+  }
+  return false;
+}
+
+function countGameParticipants(game) {
+  if (!game?.digitalCardsEnabled) return 0;
+  return Object.values(game.spectatorCards || {}).filter((entry) => entry?.playerCard?.length).length;
+}
+
+function buildGameSummary(game) {
+  return {
+    id: game.id,
+    name: game.name,
+    isDemo: isDemoGame(game),
+    demoOnly: !!game.demoOnly,
+    status: game.status || 'active',
+    hostClientId: game.hostClientId,
+    hostLabel: game.hostLabel,
+    createdAt: game.createdAt,
+    updatedAt: game.updatedAt,
+    hostLastActiveAt: game.hostLastActiveAt,
+    inactivityEndsAt: game.inactivityEndsAt,
+    calledCount: (game.called || []).length,
+    poolCount: (game.pool || []).length,
+    participantCount: countGameParticipants(game),
+    digitalCardsEnabled: !!game.digitalCardsEnabled,
+    hasLiveDraw: !!game.liveDraw,
+  };
+}
+
+function getActiveSummaries(games) {
+  return Object.values(games)
+    .filter(isUserGameActive)
+    .sort((a, b) => {
+      if (isDemoGame(a) && !isDemoGame(b)) return -1;
+      if (!isDemoGame(a) && isDemoGame(b)) return 1;
+      return Number(b.createdAt || 0) - Number(a.createdAt || 0);
+    })
+    .map(buildGameSummary);
+}
+
 const BINGO_RANGES = [
   { min: 1, max: 15 },
   { min: 16, max: 30 },
@@ -276,14 +344,18 @@ function validateSpectatorCard(card, marked) {
   return true;
 }
 
-function respondGames(res, games, req) {
+function respondGames(res, games, req, extra = {}) {
   const clientIp = getClientIp(req);
+  const revision = getRevision(games);
   res.set('Cache-Control', 'no-store');
+  res.set('ETag', String(revision));
   res.json({
     games,
+    revision,
     serverTime: Date.now(),
     ipActiveGames: countActiveGamesForIp(games, clientIp),
     maxActiveGamesPerIp: MAX_GAMES_PER_IP,
+    ...extra,
   });
 }
 
@@ -291,9 +363,75 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'bingo4all-api' });
 });
 
+app.get('/api/games/summary', (req, res) => {
+  const games = loadGames();
+  prepareGamesMaybePersist(games);
+  const revision = getRevision(games);
+  if (sendNotModifiedIfMatch(req, res, revision)) return;
+  const clientIp = getClientIp(req);
+  res.set('Cache-Control', 'no-store');
+  res.set('ETag', String(revision));
+  res.json({
+    revision,
+    serverTime: Date.now(),
+    summaries: getActiveSummaries(games),
+    ipActiveGames: countActiveGamesForIp(games, clientIp),
+    maxActiveGamesPerIp: MAX_GAMES_PER_IP,
+  });
+});
+
+app.get('/api/games/:gameId', (req, res) => {
+  const games = loadGames();
+  prepareGamesMaybePersist(games);
+  const revision = getRevision(games);
+  const gameId = String(req.params.gameId || '');
+  const game = games[gameId];
+  if (!game || typeof game !== 'object') {
+    return res.status(404).json({ error: 'GAME_NOT_FOUND', revision, serverTime: Date.now() });
+  }
+
+  const since = Number(req.query.since || 0);
+  const clientRevision = req.header('If-None-Match') || req.query.revision;
+  const gameUpdatedAt = gameTimestamp(game);
+  const unchanged = since > 0 && gameUpdatedAt <= since;
+
+  if (unchanged && clientRevision != null && clientRevision !== '' && String(revision) === String(clientRevision)) {
+    res.set('ETag', String(revision));
+    return res.status(304).end();
+  }
+
+  if (unchanged) {
+    res.set('Cache-Control', 'no-store');
+    res.set('ETag', String(revision));
+    return res.json({
+      changed: false,
+      gameId,
+      updatedAt: gameUpdatedAt,
+      revision,
+      serverTime: Date.now(),
+    });
+  }
+
+  const clientIp = getClientIp(req);
+  res.set('Cache-Control', 'no-store');
+  res.set('ETag', String(revision));
+  res.json({
+    changed: true,
+    gameId,
+    game,
+    updatedAt: gameUpdatedAt,
+    revision,
+    serverTime: Date.now(),
+    ipActiveGames: countActiveGamesForIp(games, clientIp),
+    maxActiveGamesPerIp: MAX_GAMES_PER_IP,
+  });
+});
+
 app.get(['/', '/api/games'], (req, res) => {
-  const games = prepareGames(loadGames());
-  saveGames(games);
+  const games = loadGames();
+  prepareGamesMaybePersist(games);
+  const revision = getRevision(games);
+  if (sendNotModifiedIfMatch(req, res, revision)) return;
   respondGames(res, games, req);
 });
 
@@ -303,7 +441,8 @@ app.post(['/', '/api/games'], (req, res) => {
     return res.status(400).json({ error: 'INVALID_PAYLOAD' });
   }
   const clientIp = getClientIp(req);
-  const base = prepareGames(loadGames());
+  const base = loadGames();
+  prepareGames(base);
   const { games: merged, rejectedNewIds } = mergeGames(base, incoming, clientIp);
   const prepared = prepareGames(merged);
 
@@ -315,6 +454,7 @@ app.post(['/', '/api/games'], (req, res) => {
       ipActiveGames: countActiveGamesForIp(prepared, clientIp),
       rejectedGameIds: rejectedNewIds,
       games: prepared,
+      revision: getRevision(prepared),
       serverTime: Date.now(),
     });
   }
@@ -333,7 +473,8 @@ app.post(['/api/spectator', '/spectator'], (req, res) => {
     return res.status(400).json({ error: 'INVALID_PAYLOAD' });
   }
 
-  const games = prepareGames(loadGames());
+  const games = loadGames();
+  prepareGames(games);
   const gid = String(gameId);
   const game = games[gid];
   if (!game || typeof game !== 'object' || isDemoGame(game) || game.status === 'aborted') {
