@@ -77,6 +77,8 @@
       -webkit-user-select: none;
       user-select: none;
       border-radius: 8px;
+      background: #ffffff;
+      padding: 6px;
       transition: transform 0.15s, box-shadow 0.15s;
     }
 
@@ -88,9 +90,12 @@
     .host-qr-code img,
     .host-qr-code canvas {
       display: block;
-      width: 140px;
-      height: 140px;
-      border-radius: 8px;
+      width: 160px;
+      height: 160px;
+      border-radius: 4px;
+      image-rendering: pixelated;
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
     }
 
     .host-qr-copy {
@@ -180,8 +185,8 @@
       }
       .host-qr-code img,
       .host-qr-code canvas {
-        width: 88px !important;
-        height: 88px !important;
+        width: 128px !important;
+        height: 128px !important;
       }
     }
 

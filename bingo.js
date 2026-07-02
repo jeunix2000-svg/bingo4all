@@ -20,8 +20,10 @@
   const MAX_GAME_DURATION_MS = 5 * 60 * 60 * 1000;
   const HOST_INACTIVITY_IDLE_MS = 3 * 60 * 1000;
   const HOST_INACTIVITY_GRACE_MS = 60 * 1000;
-  const HOST_QR_SIZE = 216;
   const HOST_QR_LONG_PRESS_MS = 600;
+  const HOST_QR_MARGIN_MODULES = 4;
+  const HOST_QR_EXPORT_PX = 512;
+  const HOST_QR_EC_LEVEL = () => (typeof QRCode !== "undefined" ? QRCode.CorrectLevel.H : 2);
   const CFG = window.BINGO4ALL_CONFIG || {};
   const SYNC_URL = CFG.bingoSyncUrl || CFG.apiUrl || "scripts/bingo-games.php";
   const SYNC_POLL_MS = 1000;
@@ -171,13 +173,77 @@
 
   function buildSpectatorJoinUrl(gameId) {
     const appBase = CFG.appBaseUrl;
-    const pageName = (window.location.pathname.split("/").pop() || "index.html");
     const base = appBase
-      ? `${String(appBase).replace(/\/$/, "")}/${pageName === "" ? "index.html" : pageName}`
-      : `${window.location.origin}${window.location.pathname}`;
+      ? `${String(appBase).replace(/\/$/, "")}/`
+      : `${window.location.origin}/`;
     const url = new URL(base);
     url.searchParams.set("watch", String(gameId));
     return url.toString();
+  }
+
+  function getHostQrDisplayPx() {
+    return window.matchMedia("(max-width: 700px)").matches ? 128 : 160;
+  }
+
+  function createHostQrCanvas(text, cssSizePx) {
+    if (typeof QRCode === "undefined") return null;
+    const probe = document.createElement("div");
+    probe.style.cssText = "position:fixed;left:-9999px;top:-9999px;width:0;height:0;overflow:hidden;";
+    document.body.appendChild(probe);
+    let matrix;
+    try {
+      const qr = new QRCode(probe, {
+        text,
+        width: 256,
+        height: 256,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: HOST_QR_EC_LEVEL(),
+      });
+      matrix = qr._oQRCode;
+    } catch (_) {
+      probe.remove();
+      return null;
+    }
+    probe.remove();
+    if (!matrix) return null;
+
+    const modules = matrix.getModuleCount();
+    const framedModules = modules + HOST_QR_MARGIN_MODULES * 2;
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    const targetPx = Math.max(64, Math.round(cssSizePx * dpr));
+    let modulePx = Math.max(2, Math.floor(targetPx / framedModules));
+    let canvasSize = framedModules * modulePx;
+    if (canvasSize < targetPx) {
+      modulePx += 1;
+      canvasSize = framedModules * modulePx;
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = canvasSize;
+    canvas.height = canvasSize;
+    canvas.style.width = `${cssSizePx}px`;
+    canvas.style.height = `${cssSizePx}px`;
+    canvas.setAttribute("aria-hidden", "true");
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvasSize, canvasSize);
+    ctx.fillStyle = "#000000";
+    const offset = HOST_QR_MARGIN_MODULES * modulePx;
+    for (let row = 0; row < modules; row++) {
+      for (let col = 0; col < modules; col++) {
+        if (!matrix.isDark(row, col)) continue;
+        ctx.fillRect(
+          offset + col * modulePx,
+          offset + row * modulePx,
+          modulePx,
+          modulePx,
+        );
+      }
+    }
+    return canvas;
   }
 
   function clearWatchParamFromUrl() {
@@ -188,11 +254,6 @@
       url.searchParams.delete("watch");
       window.history.replaceState({}, "", url);
     } catch (_) { /* ignore */ }
-  }
-
-  function getHostQrImageElement() {
-    if (!hostQrCodeEl) return null;
-    return hostQrCodeEl.querySelector("canvas") || hostQrCodeEl.querySelector("img");
   }
 
   function showHostQrSaveToast(message) {
@@ -208,18 +269,19 @@
   }
 
   function saveHostQrCode() {
-    const imageEl = getHostQrImageElement();
-    if (!imageEl || !currentGameId) {
+    if (!currentGameId) {
       showHostQrSaveToast(tr("bingo.qr_save_fail"));
       return false;
     }
     try {
-      const dataUrl = imageEl.tagName === "CANVAS"
-        ? imageEl.toDataURL("image/png")
-        : imageEl.src;
+      const exportCanvas = createHostQrCanvas(buildSpectatorJoinUrl(currentGameId), HOST_QR_EXPORT_PX);
+      if (!exportCanvas) {
+        showHostQrSaveToast(tr("bingo.qr_save_fail"));
+        return false;
+      }
       const link = document.createElement("a");
       link.download = `bingo-watch-${currentGameId}.png`;
-      link.href = dataUrl;
+      link.href = exportCanvas.toDataURL("image/png");
       link.click();
       showHostQrSaveToast(tr("bingo.qr_saved"));
       return true;
@@ -282,22 +344,22 @@
       hostQrCodeEl.innerHTML = "";
       return;
     }
-    if (hostQrGameId === currentGameId && hostQrCodeEl.childNodes.length) return;
+    const displayPx = getHostQrDisplayPx();
+    const renderKey = `${currentGameId}:${displayPx}`;
+    if (hostQrGameId === renderKey && hostQrCodeEl.childNodes.length) return;
     if (typeof QRCode === "undefined") {
       hostQrPanel.hidden = true;
       return;
     }
-    hostQrGameId = currentGameId;
+    hostQrGameId = renderKey;
     hostQrCodeEl.innerHTML = "";
     try {
-      new QRCode(hostQrCodeEl, {
-        text: buildSpectatorJoinUrl(currentGameId),
-        width: HOST_QR_SIZE,
-        height: HOST_QR_SIZE,
-        colorDark: "#1a1a2e",
-        colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.M,
-      });
+      const canvas = createHostQrCanvas(buildSpectatorJoinUrl(currentGameId), displayPx);
+      if (!canvas) {
+        hostQrPanel.hidden = true;
+        return;
+      }
+      hostQrCodeEl.appendChild(canvas);
     } catch (_) {
       hostQrPanel.hidden = true;
     }
@@ -2255,6 +2317,11 @@
   }
 
   bindHostQrInteractions();
+  window.addEventListener("resize", () => {
+    if (!hostQrPanel || hostQrPanel.hidden) return;
+    hostQrGameId = null;
+    updateHostQrCode();
+  });
 
   function refreshBingoUi() {
     if (window.YFC_I18N) YFC_I18N.apply();
