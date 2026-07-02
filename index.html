@@ -1153,6 +1153,46 @@
       color: #fff;
     }
 
+    .btn-exit-game,
+    .btn-end-current-game {
+      flex-shrink: 0;
+      padding: 0.35rem 0.75rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+
+    .btn-exit-game {
+      color: rgba(255, 255, 255, 0.78);
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+    }
+
+    .btn-exit-game:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+    }
+
+    .btn-end-current-game {
+      color: #ffb4a8;
+      background: rgba(231, 76, 60, 0.12);
+      border: 1px solid rgba(231, 76, 60, 0.35);
+    }
+
+    .btn-end-current-game:hover {
+      background: rgba(231, 76, 60, 0.22);
+      color: #ffd4cc;
+    }
+
+    .game-bar-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-shrink: 0;
+    }
+
     .game-bar {
       flex-shrink: 0;
       display: flex;
@@ -1437,8 +1477,10 @@
   <div id="bingo-game-wrap">
     <div class="game-bar">
       <div class="game-bar-title"><span id="game-bar-name">—</span><span id="game-bar-meta"></span></div>
-      <div style="display:flex;align-items:center;gap:0.5rem;">
+      <div class="game-bar-actions">
         <span class="spectator-badge" id="spectator-badge" hidden data-i18n="bingo.spectator_badge">観戦モード</span>
+        <button class="btn-exit-game" id="exit-game-btn" type="button" hidden data-i18n="bingo.exit_game">退出当前游戏</button>
+        <button class="btn-end-current-game" id="end-current-game-btn" type="button" hidden data-i18n="bingo.end_current_game">结束当前游戏</button>
         <button class="btn-back-lobby" id="back-lobby-btn" type="button" data-i18n="bingo.back_lobby">ロビーに戻る</button>
       </div>
     </div>
