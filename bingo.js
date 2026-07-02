@@ -769,6 +769,8 @@
       if (!summary?.id) return;
       const id = String(summary.id);
       const prev = games[id] || {};
+      const prevCardCount = countDigitalParticipants(prev);
+      const summaryCount = typeof summary.participantCount === "number" ? summary.participantCount : 0;
       const next = {
         ...prev,
         id,
@@ -785,7 +787,7 @@
         digitalCardsEnabled: "digitalCardsEnabled" in summary
           ? !!summary.digitalCardsEnabled
           : !!prev.digitalCardsEnabled,
-        participantCount: summary.participantCount ?? prev.participantCount,
+        participantCount: Math.max(prevCardCount, summaryCount, prev.participantCount ?? 0),
         calledCount: summary.calledCount,
         poolCount: summary.poolCount,
       };
@@ -804,6 +806,9 @@
     if (!gamesChanged(merged, games)) return false;
     gamesCache = merged;
     remoteGameUpdatedAt = gameTimestamp(game);
+    if (gamesCache[gameId]) {
+      gamesCache[gameId].participantCount = countDigitalParticipants(gamesCache[gameId]);
+    }
     try {
       localStorage.setItem(GAMES_KEY, JSON.stringify(gamesCache));
     } catch (_) { /* storage full */ }
@@ -1056,15 +1061,19 @@
       .map(Number)
       .filter((n) => n >= 1 && n <= 75 && !calledSet.has(n));
     const poolUnique = [...new Set(poolFromGame)];
+    let rebuiltPool = false;
     if (poolUnique.length + normalizedCalled.length < 75) {
       const missing = [];
       for (let i = 1; i <= 75; i++) {
         if (!calledSet.has(i) && !poolUnique.includes(i)) missing.push(i);
       }
-      poolUnique.push(...missing);
+      if (missing.length > 0) {
+        poolUnique.push(...missing);
+        rebuiltPool = true;
+      }
     }
     game.called = normalizedCalled;
-    game.pool = poolUnique;
+    game.pool = rebuiltPool ? shuffle(poolUnique) : poolUnique;
     return game;
   }
 
@@ -1454,8 +1463,8 @@
     });
     if ("spectatorCards" in patch) {
       gameState.spectatorCards = patch.spectatorCards;
-    } else {
-      delete gameState.spectatorCards;
+    } else if (existing.spectatorCards) {
+      gameState.spectatorCards = existing.spectatorCards;
     }
     games[currentGameId] = gameState;
     await saveAllGames(games);
@@ -1509,10 +1518,16 @@
     updateGameBar();
   }
 
+  function countDigitalParticipants(game) {
+    return Object.values(game?.spectatorCards || {}).filter((entry) => entry?.playerCard?.length).length;
+  }
+
   function getGameParticipantCount(game) {
     if (!game?.digitalCardsEnabled) return null;
+    const fromCards = countDigitalParticipants(game);
+    if (fromCards > 0) return fromCards;
     if (typeof game.participantCount === "number") return game.participantCount;
-    return Object.values(game.spectatorCards || {}).filter((entry) => entry?.playerCard?.length).length;
+    return 0;
   }
 
   function formatGameParticipantCount(game) {
@@ -1679,12 +1694,13 @@
 
   function drawFromPool() {
     if (!pool.length) return null;
-    const num = pool.pop();
-    if (called.includes(num)) {
-      pool = pool.filter((n) => n !== num && !called.includes(n));
-      return drawFromPool();
+    for (let attempt = 0; attempt < pool.length + 5; attempt += 1) {
+      const idx = Math.floor(Math.random() * pool.length);
+      const num = pool[idx];
+      pool.splice(idx, 1);
+      if (!called.includes(num)) return num;
     }
-    return num;
+    return null;
   }
 
   async function drawNumber(comboLevel) {
