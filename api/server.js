@@ -130,7 +130,7 @@ function mergeGames(base, incoming, clientIp, posterClientId) {
         digitalCardsEnabled: 'digitalCardsEnabled' in game
           ? !!game.digitalCardsEnabled
           : !!existing.digitalCardsEnabled,
-        spectatorCards: mergeSpectatorCards(existing.spectatorCards, game.spectatorCards),
+        spectatorCards: { ...(existing.spectatorCards || {}) },
         pendingWinner: 'pendingWinner' in game ? game.pendingWinner : (existing.pendingWinner ?? null),
         confirmedWinners: game.confirmedWinners ?? existing.confirmedWinners ?? [],
       };
@@ -539,6 +539,14 @@ app.post(['/api/spectator', '/spectator'], (req, res) => {
       claimedAt: now,
     };
     game.updatedAt = now;
+  } else if (action === 'leaveGame') {
+    if (game.spectatorCards[cid]) {
+      delete game.spectatorCards[cid];
+      if (game.pendingWinner?.clientId === cid) {
+        game.pendingWinner = null;
+      }
+      game.updatedAt = now;
+    }
   } else {
     return res.status(400).json({ error: 'UNKNOWN_ACTION' });
   }
