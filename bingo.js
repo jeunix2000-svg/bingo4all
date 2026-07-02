@@ -1466,6 +1466,7 @@
     } else if (existing.spectatorCards) {
       gameState.spectatorCards = existing.spectatorCards;
     }
+    gameState.participantCount = countDigitalParticipants(gameState);
     games[currentGameId] = gameState;
     await saveAllGames(games);
     if (finished) clearSessionIfGame(currentGameId);
